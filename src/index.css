@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap");
 
 *,
 *::before,
@@ -33,14 +33,14 @@ html {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Syne', sans-serif;
+  font-family: "Syne", sans-serif;
   font-size: 15px;
   line-height: 1.6;
   min-height: 100vh;
 }
 
 button {
-  font-family: 'Syne', sans-serif;
+  font-family: "Syne", sans-serif;
   cursor: pointer;
 }
 
@@ -98,7 +98,9 @@ button {
   border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 500;
-  transition: background 0.15s, transform 0.1s;
+  transition:
+    background 0.15s,
+    transform 0.1s;
 }
 .btn-primary:hover {
   background: var(--accent2);
@@ -115,7 +117,9 @@ button {
   font-size: 0.85rem;
   padding: 6px 10px;
   border-radius: 8px;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 .btn-back:hover {
   color: var(--text);
@@ -125,7 +129,7 @@ button {
 /* ── Books Page ── */
 .books-main {
   max-width: 900px;
-  margin: 0 auto;
+  /* margin: 0 auto; */
   padding: 3rem 1.5rem;
   flex: 1;
 }
@@ -215,7 +219,9 @@ button {
 
 .book-arrow {
   color: var(--text3);
-  transition: transform 0.15s, color 0.15s;
+  transition:
+    transform 0.15s,
+    color 0.15s;
 }
 .book-card:hover .book-arrow {
   color: var(--accent2);
@@ -307,7 +313,9 @@ button {
   padding: 1rem 0.5rem;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: background 0.12s, padding 0.12s;
+  transition:
+    background 0.12s,
+    padding 0.12s;
   border-radius: 6px;
 }
 .chapter-item:hover {
@@ -318,7 +326,7 @@ button {
   font-size: 0.75rem;
   color: var(--text3);
   min-width: 24px;
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
 }
 .chapter-title {
   flex: 1;
@@ -327,7 +335,9 @@ button {
 .chapter-arrow {
   color: var(--text3);
   opacity: 0;
-  transition: opacity 0.12s, transform 0.12s;
+  transition:
+    opacity 0.12s,
+    transform 0.12s;
 }
 .chapter-item:hover .chapter-arrow {
   opacity: 1;
@@ -375,7 +385,7 @@ button {
   margin-bottom: 0.3rem;
 }
 .markdown-body code {
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.85em;
   background: var(--bg3);
   padding: 2px 6px;
@@ -428,8 +438,10 @@ button {
   padding: 3px 10px;
   border-radius: 6px;
   font-size: 0.75rem;
-  font-family: 'Fira Code', monospace;
-  transition: background 0.15s, color 0.15s;
+  font-family: "Fira Code", monospace;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .copy-btn:hover {
   background: var(--accent-bg);
@@ -460,7 +472,9 @@ button {
   padding: 2.5rem;
   text-align: center;
   margin-bottom: 1.5rem;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 .drop-zone.drag-over {
   border-color: var(--accent);
@@ -500,7 +514,9 @@ button {
   border: 1px solid var(--border2);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
   color: var(--text2);
   font-size: 0.85rem;
   font-weight: 500;
@@ -571,7 +587,7 @@ button {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  font-family: 'Fira Code', monospace;
+  font-family: "Fira Code", monospace;
   font-size: 0.8rem;
   line-height: 1.7;
   color: var(--text2);
@@ -682,7 +698,7 @@ button {
   border-radius: 8px;
   padding: 0.75rem 1rem;
   color: var(--text);
-  font-family: 'Syne', sans-serif;
+  font-family: "Syne", sans-serif;
   font-size: 0.9rem;
   outline: none;
   transition: border-color 0.15s;
@@ -763,7 +779,10 @@ button {
   border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 500;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
 }
 
 .btn-download:hover {
