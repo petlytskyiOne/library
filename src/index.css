@@ -1,0 +1,579 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0a0a0f;
+  --bg2: #111118;
+  --bg3: #18181f;
+  --border: rgba(255, 255, 255, 0.07);
+  --border2: rgba(255, 255, 255, 0.13);
+  --accent: #7c6aff;
+  --accent2: #a896ff;
+  --accent-bg: rgba(124, 106, 255, 0.1);
+  --text: #e8e8f0;
+  --text2: #9090a8;
+  --text3: #55556a;
+  --success: #3ecf8e;
+  --error: #ff5c5c;
+  --radius: 12px;
+  --radius-lg: 18px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+button {
+  font-family: 'Syne', sans-serif;
+  cursor: pointer;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 2px;
+}
+
+/* ── Layout ── */
+.page-wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(10, 10, 15, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.header-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.site-logo {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent2);
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-primary:hover {
+  background: var(--accent2);
+  transform: translateY(-1px);
+}
+
+.btn-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+}
+.btn-back:hover {
+  color: var(--text);
+  background: var(--bg3);
+}
+
+/* ── Books Page ── */
+.books-main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+  flex: 1;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text3);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+.count {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  padding: 1px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  color: var(--text2);
+}
+
+.books-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.book-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.1rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.book-card:first-child {
+  border-top: 1px solid var(--border);
+}
+.book-card:hover {
+  background: var(--bg2);
+}
+
+.book-spine {
+  width: 3px;
+  align-self: stretch;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+.book-card:hover .book-spine {
+  opacity: 1;
+}
+
+.book-body {
+  flex: 1;
+  min-width: 0;
+}
+.book-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.book-author {
+  font-size: 0.8rem;
+  color: var(--accent2);
+  margin-bottom: 4px;
+}
+.book-meta {
+  font-size: 0.75rem;
+  color: var(--text3);
+}
+.book-desc {
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-arrow {
+  color: var(--text3);
+  transition: transform 0.15s, color 0.15s;
+}
+.book-card:hover .book-arrow {
+  color: var(--accent2);
+  transform: translateX(4px);
+}
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 6rem 2rem;
+  text-align: center;
+}
+.empty-icon {
+  color: var(--text3);
+  margin-bottom: 0.5rem;
+}
+.empty-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.empty-sub {
+  color: var(--text2);
+  font-size: 0.9rem;
+  max-width: 320px;
+  line-height: 1.6;
+}
+
+/* ── Book Page ── */
+.book-main {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.book-hero {
+  margin-bottom: 3rem;
+}
+.book-hero-title {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.5rem;
+}
+.book-hero-author {
+  color: var(--accent2);
+  font-size: 0.9rem;
+  margin-bottom: 0.8rem;
+}
+.book-hero-desc {
+  color: var(--text2);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  max-width: 500px;
+}
+.book-hero-meta {
+  margin-top: 1rem;
+  display: flex;
+  gap: 1rem;
+}
+.book-hero-meta span {
+  font-size: 0.75rem;
+  color: var(--text3);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.section-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 1rem;
+}
+
+.chapters-list {
+  display: flex;
+  flex-direction: column;
+}
+.chapter-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s, padding 0.12s;
+  border-radius: 6px;
+}
+.chapter-item:hover {
+  background: var(--bg2);
+  padding-left: 1rem;
+}
+.chapter-num {
+  font-size: 0.75rem;
+  color: var(--text3);
+  min-width: 24px;
+  font-family: 'Fira Code', monospace;
+}
+.chapter-title {
+  flex: 1;
+  font-size: 0.95rem;
+}
+.chapter-arrow {
+  color: var(--text3);
+  opacity: 0;
+  transition: opacity 0.12s, transform 0.12s;
+}
+.chapter-item:hover .chapter-arrow {
+  opacity: 1;
+  transform: translateX(4px);
+}
+
+/* ── Chapter Page ── */
+.chapter-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 6rem;
+}
+
+/* ── Markdown ── */
+.markdown-body {
+  color: var(--text);
+  line-height: 1.8;
+}
+.markdown-body h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0 0 1.5rem;
+}
+.markdown-body h2 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin: 2.5rem 0 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.markdown-body h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 2rem 0 0.7rem;
+}
+.markdown-body p {
+  margin-bottom: 1rem;
+}
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+.markdown-body li {
+  margin-bottom: 0.3rem;
+}
+.markdown-body code {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.85em;
+  background: var(--bg3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent2);
+}
+.markdown-body pre {
+  background: var(--bg2) !important;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.2rem 1.4rem;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+}
+.markdown-body pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: 0.85rem;
+}
+.markdown-body blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 1.5rem 0;
+  padding: 0.8rem 1.2rem;
+  color: var(--text2);
+  background: var(--accent-bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.markdown-body a {
+  color: var(--accent2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.markdown-body strong {
+  font-weight: 600;
+}
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-family: 'Fira Code', monospace;
+  transition: background 0.15s, color 0.15s;
+}
+.copy-btn:hover {
+  background: var(--accent-bg);
+  color: var(--accent2);
+  border-color: var(--accent);
+}
+
+/* ── Upload Page ── */
+.upload-main {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+.upload-heading {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+.upload-sub {
+  color: var(--text2);
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+}
+
+.drop-zone {
+  border: 1.5px dashed var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+.drop-zone.drag-over {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.drop-zone.is-loading {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.drop-icon {
+  color: var(--text3);
+  margin: 0 auto 1rem;
+  display: block;
+}
+.drop-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.drop-hint {
+  font-size: 0.8rem;
+  color: var(--text3);
+}
+
+.upload-methods {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.method-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1.4rem 1rem;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  color: var(--text2);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.method-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--text);
+}
+.method-card.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.upload-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+}
+.upload-status.phase-ok {
+  border-color: var(--success);
+  color: var(--success);
+}
+.upload-status.phase-err {
+  border-color: var(--error);
+  color: var(--error);
+}
+.upload-status.phase-loading {
+  color: var(--text2);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid var(--border2);
+  border-top-color: var(--accent2);
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.format-hint {
+  color: var(--text3);
+  font-size: 0.82rem;
+}
+.format-hint summary {
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+.format-hint summary:hover {
+  color: var(--text2);
+}
+.format-pre {
+  margin-top: 0.8rem;
+  padding: 1rem 1.2rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: 'Fira Code', monospace;
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: var(--text2);
+  white-space: pre;
+}
