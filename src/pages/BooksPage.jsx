@@ -7,18 +7,23 @@ export default function BooksPage(props) {
       <header class="site-header">
         <div class="header-inner">
           <span class="site-logo">bookshelf</span>
-          <button class="btn-primary" onClick={props.onUpload}>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M7 1v8M3 5l4-4 4 4M1 11h12"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            Додати книгу
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button class="btn-back" onClick={props.onLogout}>
+              Вийти
+            </button>
+            <button class="btn-primary" onClick={props.onUpload}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path
+                  d="M7 1v8M3 5l4-4 4 4M1 11h12"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Додати книгу
+            </button>
+          </div>
         </div>
       </header>
 

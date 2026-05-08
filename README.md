@@ -1,12 +1,12 @@
-Крок 1 — створення проєкту ← ти тут  
-Крок 2 — vite.config.js + jsconfig.json  
-Крок 3 — firebase.js  
-Крок 4 — index.css (стилі)  
-Крок 5 — router.js  
-Крок 6 — index.jsx (точка входу)  
-Крок 7 — App.jsx  
-Крок 8 — BooksPage.jsx  
-Крок 9 — BookPage.jsx + ChapterPage.jsx  
+Крок 1 — створення проєкту ← ти тут
+Крок 2 — vite.config.js + jsconfig.json
+Крок 3 — firebase.js
+Крок 4 — index.css (стилі)
+Крок 5 — router.js
+Крок 6 — index.jsx (точка входу)
+Крок 7 — App.jsx
+Крок 8 — BooksPage.jsx
+Крок 9 — BookPage.jsx + ChapterPage.jsx
 Крок 10 — UploadBook.jsx
 
 ## Usage

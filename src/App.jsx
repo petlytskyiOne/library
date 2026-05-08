@@ -1,19 +1,22 @@
 import { createSignal, onMount, onCleanup, Show } from 'solid-js';
 import { parsePath } from './router';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 import BooksPage from './pages/BooksPage';
 import BookPage from './pages/BookPage';
 import ChapterPage from './pages/ChapterPage';
 import UploadBook from './components/UploadBook';
+import LoginPage from './pages/LoginPage';
 
 function App() {
   const [route, setRoute] = createSignal(parsePath(window.location.pathname));
   const [books, setBooks] = createSignal([]);
   const [loading, setLoading] = createSignal(true);
+  const [user, setUser] = createSignal(null);
+  const [authReady, setAuthReady] = createSignal(false);
 
-  // ── Навігація ──────────────────────────────────────
   function navigate(path) {
     window.history.pushState({}, '', path);
     setRoute(parsePath(path));
@@ -26,7 +29,14 @@ function App() {
     onCleanup(() => window.removeEventListener('popstate', handler));
   });
 
-  // ── Firebase: real-time підписка ───────────────────
+  onMount(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthReady(true);
+    });
+    onCleanup(unsub);
+  });
+
   onMount(() => {
     const unsub = onSnapshot(
       collection(db, 'books'),
@@ -34,19 +44,13 @@ function App() {
         setBooks(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setLoading(false);
       },
-      (err) => {
-        console.error('Firebase error:', err);
-        setLoading(false);
-      }
+      () => setLoading(false)
     );
     onCleanup(unsub);
   });
 
-  // ── Хелпери ────────────────────────────────────────
   const r = () => route();
-
   const currentBook = () => books().find((b) => b.slug === r().bookSlug);
-
   const currentChapter = () => {
     const book = currentBook();
     const index = Number(r().chapterIndex);
@@ -54,10 +58,9 @@ function App() {
     return book.chapters?.[index] ?? null;
   };
 
-  // ── UI ─────────────────────────────────────────────
   return (
     <Show
-      when={!loading()}
+      when={authReady()}
       fallback={
         <div
           style={{
@@ -72,35 +75,60 @@ function App() {
         </div>
       }
     >
-      {/* Головна — список книг */}
-      <Show when={r().type === null}>
-        <BooksPage
-          books={books()}
-          openBook={(b) => navigate(`/book/${b.slug}`)}
-          onUpload={() => navigate('/upload')}
-        />
+      <Show when={!user()}>
+        <LoginPage />
       </Show>
 
-      {/* Завантаження книги */}
-      <Show when={r().type === 'upload'}>
-        <UploadBook onDone={() => navigate('/')} onBack={() => navigate('/')} />
-      </Show>
+      <Show when={user()}>
+        <Show
+          when={!loading()}
+          fallback={
+            <div
+              style={{
+                display: 'flex',
+                'align-items': 'center',
+                'justify-content': 'center',
+                height: '100vh',
+                color: 'var(--text3)',
+              }}
+            >
+              завантаження...
+            </div>
+          }
+        >
+          <Show when={r().type === null}>
+            <BooksPage
+              books={books()}
+              openBook={(b) => navigate(`/book/${b.slug}`)}
+              onUpload={() => navigate('/upload')}
+              onLogout={() => signOut(auth)}
+            />
+          </Show>
 
-      {/* Сторінка книги */}
-      <Show when={r().type === 'book' && r().chapterIndex === null}>
-        <BookPage
-          book={currentBook()}
-          openChapter={(_, i) => navigate(`/book/${r().bookSlug}/chapter/${i}`)}
-          back={() => navigate('/')}
-        />
-      </Show>
+          <Show when={r().type === 'upload'}>
+            <UploadBook
+              onDone={() => navigate('/')}
+              onBack={() => navigate('/')}
+            />
+          </Show>
 
-      {/* Сторінка глави */}
-      <Show when={r().type === 'book' && r().chapterIndex !== null}>
-        <ChapterPage
-          chapter={currentChapter()}
-          back={() => navigate(`/book/${r().bookSlug}`)}
-        />
+          <Show when={r().type === 'book' && r().chapterIndex === null}>
+            <BookPage
+              book={currentBook()}
+              openChapter={(_, i) =>
+                navigate(`/book/${r().bookSlug}/chapter/${i}`)
+              }
+              back={() => navigate('/')}
+            />
+          </Show>
+
+          <Show when={r().type === 'book' && r().chapterIndex !== null}>
+            <ChapterPage
+              chapter={currentChapter()}
+              back={() => navigate(`/book/${r().bookSlug}`)}
+            />
+          </Show>
+        </Show>
       </Show>
     </Show>
   );
