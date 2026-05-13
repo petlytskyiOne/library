@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
 
 *,
 *::before,
@@ -17,7 +17,7 @@
   --accent: #7c6aff;
   --accent2: #a896ff;
   --accent-bg: rgba(124, 106, 255, 0.1);
-  --text: #e8e8f0;
+  --text: #e8e8f0a9;
   --text2: #9090a8;
   --text3: #55556a;
   --success: #3ecf8e;
@@ -33,14 +33,14 @@ html {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "Syne", sans-serif;
-  font-size: 15px;
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(0.875rem, 1.5vw, 1.967rem);
   line-height: 1.6;
   min-height: 100vh;
 }
 
 button {
-  font-family: "Syne", sans-serif;
+  font-family: 'Syne', sans-serif;
   cursor: pointer;
 }
 
@@ -71,7 +71,7 @@ button {
   border-bottom: 1px solid var(--border);
 }
 .header-inner {
-  max-width: 900px;
+  max-width: 2000px;
   margin: 0 auto;
   padding: 0 1.5rem;
   height: 56px;
@@ -98,9 +98,7 @@ button {
   border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 500;
-  transition:
-    background 0.15s,
-    transform 0.1s;
+  transition: background 0.15s, transform 0.1s;
 }
 .btn-primary:hover {
   background: var(--accent2);
@@ -117,9 +115,7 @@ button {
   font-size: 0.85rem;
   padding: 6px 10px;
   border-radius: 8px;
-  transition:
-    color 0.15s,
-    background 0.15s;
+  transition: color 0.15s, background 0.15s;
 }
 .btn-back:hover {
   color: var(--text);
@@ -128,9 +124,9 @@ button {
 
 /* ── Books Page ── */
 .books-main {
-  max-width: 1200px;
-  /* margin: 0 auto; */
-  padding: 3rem 1.5rem;
+  max-width: 1700px;
+  margin: 0 2rem;
+  padding: 3rem 7rem;
   flex: 1;
 }
 
@@ -167,12 +163,38 @@ button {
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.15s;
+  position: relative;
 }
 .book-card:first-child {
   border-top: 1px solid var(--border);
 }
 .book-card:hover {
   background: var(--bg2);
+}
+
+.btn-delete {
+  position: absolute;
+  right: 3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  padding: 0.9rem;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+}
+
+.book-card:hover .btn-delete {
+  opacity: 1;
+}
+
+.btn-delete:hover {
+  color: #e55;
 }
 
 .book-spine {
@@ -192,7 +214,7 @@ button {
   min-width: 0;
 }
 .book-title {
-  font-size: 1rem;
+  font-size: 2rem;
   font-weight: 600;
   margin-bottom: 2px;
   white-space: nowrap;
@@ -219,9 +241,7 @@ button {
 
 .book-arrow {
   color: var(--text3);
-  transition:
-    transform 0.15s,
-    color 0.15s;
+  transition: transform 0.15s, color 0.15s;
 }
 .book-card:hover .book-arrow {
   color: var(--accent2);
@@ -254,13 +274,27 @@ button {
 
 /* ── Book Page ── */
 .book-main {
-  max-width: 700px;
-  margin: 0 auto;
-  padding: 3rem 1.5rem;
+  max-width: 1700px;
+  margin: 0 2rem;
+  padding: 3rem 7rem;
 }
 
 .book-hero {
   margin-bottom: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.book-hero-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.book-hero-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 .book-hero-title {
   font-size: 2rem;
@@ -313,9 +347,7 @@ button {
   padding: 1rem 0.5rem;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition:
-    background 0.12s,
-    padding 0.12s;
+  transition: background 0.12s, padding 0.12s;
   border-radius: 6px;
 }
 .chapter-item:hover {
@@ -326,18 +358,16 @@ button {
   font-size: 0.75rem;
   color: var(--text3);
   min-width: 24px;
-  font-family: "Fira Code", monospace;
+  font-family: 'Fira Code', monospace;
 }
 .chapter-title {
   flex: 1;
-  font-size: 0.95rem;
+  font-size: 1.95rem;
 }
 .chapter-arrow {
   color: var(--text3);
   opacity: 0;
-  transition:
-    opacity 0.12s,
-    transform 0.12s;
+  transition: opacity 0.12s, transform 0.12s;
 }
 .chapter-item:hover .chapter-arrow {
   opacity: 1;
@@ -346,9 +376,9 @@ button {
 
 /* ── Chapter Page ── */
 .chapter-main {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 3rem 1.5rem 6rem;
+  max-width: 1720px;
+  margin: 0 2rem;
+  padding: 3rem 20rem;
 }
 
 /* ── Markdown ── */
@@ -385,7 +415,7 @@ button {
   margin-bottom: 0.3rem;
 }
 .markdown-body code {
-  font-family: "Fira Code", monospace;
+  font-family: 'Fira Code', monospace;
   font-size: 0.85em;
   background: var(--bg3);
   padding: 2px 6px;
@@ -438,10 +468,8 @@ button {
   padding: 3px 10px;
   border-radius: 6px;
   font-size: 0.75rem;
-  font-family: "Fira Code", monospace;
-  transition:
-    background 0.15s,
-    color 0.15s;
+  font-family: 'Fira Code', monospace;
+  transition: background 0.15s, color 0.15s;
 }
 .copy-btn:hover {
   background: var(--accent-bg);
@@ -472,9 +500,7 @@ button {
   padding: 2.5rem;
   text-align: center;
   margin-bottom: 1.5rem;
-  transition:
-    border-color 0.2s,
-    background 0.2s;
+  transition: border-color 0.2s, background 0.2s;
 }
 .drop-zone.drag-over {
   border-color: var(--accent);
@@ -514,9 +540,7 @@ button {
   border: 1px solid var(--border2);
   border-radius: var(--radius);
   cursor: pointer;
-  transition:
-    border-color 0.15s,
-    background 0.15s;
+  transition: border-color 0.15s, background 0.15s;
   color: var(--text2);
   font-size: 0.85rem;
   font-weight: 500;
@@ -587,7 +611,7 @@ button {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  font-family: "Fira Code", monospace;
+  font-family: 'Fira Code', monospace;
   font-size: 0.8rem;
   line-height: 1.7;
   color: var(--text2);
@@ -698,7 +722,7 @@ button {
   border-radius: 8px;
   padding: 0.75rem 1rem;
   color: var(--text);
-  font-family: "Syne", sans-serif;
+  font-family: 'Syne', sans-serif;
   font-size: 0.9rem;
   outline: none;
   transition: border-color 0.15s;
@@ -779,14 +803,108 @@ button {
   border-radius: 8px;
   font-size: 0.85rem;
   font-weight: 500;
-  transition:
-    border-color 0.15s,
-    color 0.15s,
-    background 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 
 .btn-download:hover {
   border-color: var(--accent);
   color: var(--accent2);
   background: var(--accent-bg);
+}
+.word-tooltip {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  max-width: 200px;
+}
+
+.tooltip-word {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text1);
+}
+
+.tooltip-translation {
+  font-size: 0.8rem;
+  color: var(--text3);
+}
+
+/* підсвічування слів при озвученні */
+.word {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background 0.1s;
+}
+.word:hover {
+  background: var(--bg2);
+}
+.word-active {
+  background: rgba(255, 200, 0, 0.35);
+  border-radius: 3px;
+}
+.word-done {
+  color: var(--text3);
+}
+
+/* речення */
+.sentence {
+  position: relative;
+}
+.btn-speak-sentence {
+  display: inline-flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  vertical-align: middle;
+}
+.sentence:hover .btn-speak-sentence {
+  opacity: 1;
+}
+.btn-speak-sentence:hover {
+  color: var(--text1);
+}
+
+/* переклад речення */
+.sentence-translation {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text3);
+  margin: 0.2rem 0 0.4rem;
+  font-style: italic;
+}
+
+/* tooltip слова */
+.word-tooltip {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  max-width: 200px;
+}
+.tooltip-word {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text1);
+}
+.tooltip-translation {
+  font-size: 0.8rem;
+  color: var(--text3);
 }

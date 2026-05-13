@@ -1,25 +1,33 @@
-import { onMount, onCleanup, Show } from 'solid-js';
+import { onMount, onCleanup, Show, createSignal } from 'solid-js';
 import { marked } from 'marked';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.css';
+import { countUniqueWords } from '../utils/text.js';
+import {
+  speakWord,
+  speakSentence,
+  stopSpeaking,
+  translateText,
+  detectLang,
+} from '../utils/translate.js';
 
 export default function ChapterPage(props) {
+  const [tooltip, setTooltip] = createSignal(null);
+
   onMount(() => {
     hljs.highlightAll();
 
-    // відновлення позиції скролу
     const saved = localStorage.getItem(`scroll-${props.chapter?.slug}`);
     if (saved) window.scrollTo(0, Number(saved));
 
-    // зберігаємо позицію скролу
     const onScroll = () => {
       localStorage.setItem(`scroll-${props.chapter?.slug}`, window.scrollY);
     };
     window.addEventListener('scroll', onScroll);
     onCleanup(() => window.removeEventListener('scroll', onScroll));
 
-    // кнопки copy на блоках коду
     queueMicrotask(() => {
+      // copy кнопки на блоках коду
       document.querySelectorAll('pre').forEach((block) => {
         if (block.querySelector('.copy-btn')) return;
         const btn = document.createElement('button');
@@ -33,6 +41,85 @@ export default function ChapterPage(props) {
         block.style.position = 'relative';
         block.appendChild(btn);
       });
+
+      // обгортаємо кожне слово у <span class="word">
+      // і кожне речення у <span class="sentence">
+      const markdownEl = document.querySelector('.markdown-body');
+      if (!markdownEl) return;
+
+      markdownEl.querySelectorAll('p, li, h1, h2, h3').forEach((block) => {
+        // розбиваємо на речення
+        const sentences = block.innerHTML.split(/(?<=[.!?])\s+/);
+        block.innerHTML = sentences
+          .map((sent) => {
+            // обгортаємо слова
+            const withWords = sent.replace(
+              /([a-zA-Zа-яА-ЯіІїЇєЄёЁãõáéíóúâêôàçüÃÕÁÉÍÓÚÂÊÔÀÇÜ'-]+)/g,
+              '<span class="word">$1</span>'
+            );
+            return `<span class="sentence">${withWords} </span>`;
+          })
+          .join('');
+
+        // кнопка озвучення біля речення
+        block.querySelectorAll('.sentence').forEach((sentEl) => {
+          const btn = document.createElement('button');
+          btn.className = 'btn-speak-sentence';
+          btn.title = 'Озвучити речення';
+          btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+            <path d="M3 5.5h2l3-3v11l-3-3H3v-5zM11 5.5c1 .8 1.5 1.8 1.5 2.5S12 9.7 11 10.5" 
+              stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>`;
+          btn.onclick = async (e) => {
+            e.stopPropagation();
+            const text = sentEl.textContent.trim();
+            const lang = detectLang(text);
+            const spans = Array.from(sentEl.querySelectorAll('.word'));
+            speakSentence(text, lang, spans);
+            // показуємо переклад під реченням
+            const existing = sentEl.querySelector('.sentence-translation');
+            if (existing) {
+              existing.remove();
+              return;
+            }
+            const div = document.createElement('div');
+            div.className = 'sentence-translation';
+            div.textContent = '...';
+            sentEl.appendChild(div);
+            const translation = await translateText(text, lang);
+            div.textContent = translation;
+          };
+          sentEl.appendChild(btn);
+        });
+      });
+    });
+
+    // клік на слово → озвучення + tooltip з перекладом
+    const handleWordClick = async (e) => {
+      const wordEl = e.target.closest('.word');
+      if (!wordEl) return;
+      e.stopPropagation();
+
+      const word = wordEl.textContent.trim();
+      const lang = detectLang(word);
+      speakWord(word, lang);
+
+      setTooltip({ word, translation: '...', x: e.clientX, y: e.clientY });
+      const translation = await translateText(word, lang);
+      setTooltip((t) => t && { ...t, translation });
+    };
+
+    const markdownEl = document.querySelector('.markdown-body');
+    markdownEl?.addEventListener('click', handleWordClick);
+    onCleanup(() => markdownEl?.removeEventListener('click', handleWordClick));
+
+    const closeTooltip = (e) => {
+      if (!e.target.closest('.word-tooltip')) setTooltip(null);
+    };
+    document.addEventListener('click', closeTooltip);
+    onCleanup(() => {
+      document.removeEventListener('click', closeTooltip);
+      stopSpeaking();
     });
   });
 
@@ -48,7 +135,6 @@ export default function ChapterPage(props) {
       }
     >
       <div class="page-wrap">
-        {/* Шапка */}
         <header class="site-header">
           <div class="header-inner">
             <button class="btn-back" onClick={props.back}>
@@ -63,6 +149,9 @@ export default function ChapterPage(props) {
               </svg>
               Назад
             </button>
+            <span class="word-count">
+              {countUniqueWords(props.chapter.content)} унікальних слів
+            </span>
           </div>
         </header>
 
@@ -72,6 +161,20 @@ export default function ChapterPage(props) {
             innerHTML={marked.parse(props.chapter.content)}
           />
         </main>
+
+        <Show when={tooltip()}>
+          <div
+            class="word-tooltip"
+            style={{
+              position: 'fixed',
+              left: `${tooltip().x}px`,
+              top: `${tooltip().y + 16}px`,
+            }}
+          >
+            <span class="tooltip-word">{tooltip().word}</span>
+            <span class="tooltip-translation">{tooltip().translation}</span>
+          </div>
+        </Show>
       </div>
     </Show>
   );

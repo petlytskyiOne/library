@@ -1,5 +1,6 @@
-Крок 1 — створення проєкту ← ти тут
-Крок 2 — vite.config.js + jsconfig.json
+test
+Крок 1 — створення проєкту ← ти тут  
+Крок 2 — vite.config.js + jsconfig.json  
 Крок 3 — firebase.js
 Крок 4 — index.css (стилі)
 Крок 5 — router.js

@@ -62,30 +62,34 @@ export default function BookPage(props) {
         <main class="book-main">
           {/* Інфо про книгу */}
           <div class="book-hero">
-            <h1 class="book-hero-title">{props.book.title}</h1>
-            <Show when={props.book.author}>
-              <p class="book-hero-author">{props.book.author}</p>
-            </Show>
-            <Show when={props.book.description}>
-              <p class="book-hero-desc">{props.book.description}</p>
-            </Show>
-            <div class="book-hero-meta">
-              <span>{props.book.chapters?.length ?? 0} глав</span>
+            <div class="book-hero-left">
+              <h1 class="book-hero-title">{props.book.title}</h1>
+              <Show when={props.book.author}>
+                <p class="book-hero-author">{props.book.author}</p>
+              </Show>
+              <Show when={props.book.description}>
+                <p class="book-hero-desc">{props.book.description}</p>
+              </Show>
             </div>
+            <div class="book-hero-right">
+              <div class="book-hero-meta">
+                <span>{props.book.chapters?.length ?? 0} глав</span>
+              </div>
 
-            {/* Кнопка завантаження */}
-            <button class="btn-download" onClick={downloadBook}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path
-                  d="M7 1v8M3 9l4 4 4-4M1 13h12"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-              Завантажити .md
-            </button>
+              {/* Кнопка завантаження */}
+              <button class="btn-download" onClick={downloadBook}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path
+                    d="M7 1v8M3 9l4 4 4-4M1 13h12"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                Завантажити .md
+              </button>
+            </div>
           </div>
 
           {/* Список глав */}

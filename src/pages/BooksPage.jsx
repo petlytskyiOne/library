@@ -80,6 +80,23 @@ export default function BooksPage(props) {
                       <p class="book-desc">{book.description}</p>
                     </Show>
                   </div>
+                  <button
+                    class="btn-delete"
+                    onClick={(e) => {
+                      e.stopPropagation(); // щоб не відкривалась книга
+                      props.onDeleteBook(book.id);
+                    }}
+                  >
+                    <svg width="19" height="19" viewBox="0 0 14 14" fill="none">
+                      <path
+                        d="M2 4h10M5 4V2.5h4V4M5.5 6.5v4M8.5 6.5v4M3 4l.7 7.5h6.6L11 4"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
                   <div class="book-arrow">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                       <path

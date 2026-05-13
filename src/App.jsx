@@ -58,6 +58,12 @@ function App() {
     return book.chapters?.[index] ?? null;
   };
 
+  // ← додайте сюди
+  async function deleteBook(id) {
+    const { doc, deleteDoc } = await import('firebase/firestore');
+    await deleteDoc(doc(db, 'books', id));
+  }
+
   return (
     <Show
       when={authReady()}
@@ -102,6 +108,7 @@ function App() {
               openBook={(b) => navigate(`/book/${b.slug}`)}
               onUpload={() => navigate('/upload')}
               onLogout={() => signOut(auth)}
+              onDeleteBook={(id) => deleteBook(id)}
             />
           </Show>
 
