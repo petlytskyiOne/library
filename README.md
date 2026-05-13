@@ -1,4 +1,3 @@
-test
 Крок 1 — створення проєкту ← ти тут  
 Крок 2 — vite.config.js + jsconfig.json  
 Крок 3 — firebase.js
