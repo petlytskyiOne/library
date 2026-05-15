@@ -34,7 +34,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Syne', sans-serif;
-  font-size: clamp(0.875rem, 1.5vw, 1.967rem);
+  font-size: clamp(1.1rem, 1.5vw, 1.967rem);
   line-height: 1.6;
   min-height: 100vh;
 }
@@ -864,7 +864,7 @@ button {
   border: none;
   color: var(--text3);
   cursor: pointer;
-  padding: 0 2px;
+  padding: 0 1rem;
   opacity: 0;
   transition: opacity 0.15s;
   vertical-align: middle;
