@@ -10,6 +10,8 @@
 
 :root {
   --bg: #0a0a0f;
+  --bg1: #0d0d14;
+  /* ← додано, використовується в rate-active і btn-speak-chapter */
   --bg2: #111118;
   --bg3: #18181f;
   --border: rgba(255, 255, 255, 0.07);
@@ -18,6 +20,8 @@
   --accent2: #a896ff;
   --accent-bg: rgba(124, 106, 255, 0.1);
   --text: #e8e8f0a9;
+  --text1: #e8e8f0;
+  /* ← додано, використовується скрізь */
   --text2: #9090a8;
   --text3: #55556a;
   --success: #3ecf8e;
@@ -70,6 +74,7 @@ button {
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
+
 .header-inner {
   max-width: 2000px;
   margin: 0 auto;
@@ -78,12 +83,19 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
 }
+
 .site-logo {
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--accent2);
+}
+
+.user-greeting {
+  font-size: 0.8rem;
+  color: var(--text3);
 }
 
 /* ── Buttons ── */
@@ -141,6 +153,7 @@ button {
   text-transform: uppercase;
   margin-bottom: 1.5rem;
 }
+
 .count {
   background: var(--bg3);
   border: 1px solid var(--border2);
@@ -188,11 +201,9 @@ button {
   display: flex;
   align-items: center;
 }
-
 .book-card:hover .btn-delete {
   opacity: 1;
 }
-
 .btn-delete:hover {
   color: #e55;
 }
@@ -285,12 +296,10 @@ button {
   align-items: center;
   justify-content: space-between;
 }
-
 .book-hero-left {
   display: flex;
   flex-direction: column;
 }
-
 .book-hero-right {
   display: flex;
   flex-direction: column;
@@ -618,66 +627,6 @@ button {
   white-space: pre;
 }
 
-/* ── Мобільна адаптація ── */
-@media (max-width: 640px) {
-  .header-inner {
-    padding: 0 1rem;
-  }
-
-  .site-logo {
-    font-size: 0.9rem;
-  }
-
-  .books-main {
-    padding: 1.5rem 1rem;
-  }
-
-  .book-main {
-    padding: 1.5rem 1rem;
-  }
-
-  .chapter-main {
-    padding: 1.5rem 1rem 4rem;
-  }
-
-  .upload-main {
-    padding: 1.5rem 1rem;
-  }
-
-  .book-hero-title {
-    font-size: 1.4rem;
-  }
-
-  .upload-methods {
-    flex-direction: column;
-  }
-
-  .upload-heading {
-    font-size: 1.4rem;
-  }
-
-  .markdown-body h1 {
-    font-size: 1.4rem;
-  }
-
-  .markdown-body h2 {
-    font-size: 1.1rem;
-  }
-
-  .markdown-body pre {
-    font-size: 0.78rem;
-    padding: 0.8rem;
-  }
-
-  .book-desc {
-    display: none;
-  }
-
-  .drop-zone {
-    padding: 1.5rem 1rem;
-  }
-}
-
 /* ── Login ── */
 .login-wrap {
   min-height: 100vh;
@@ -686,7 +635,6 @@ button {
   justify-content: center;
   padding: 1rem;
 }
-
 .login-box {
   width: 100%;
   max-width: 380px;
@@ -695,7 +643,6 @@ button {
   border-radius: var(--radius-lg);
   padding: 2.5rem 2rem;
 }
-
 .login-logo {
   font-size: 0.85rem;
   font-weight: 700;
@@ -703,19 +650,16 @@ button {
   color: var(--accent2);
   margin-bottom: 1.5rem;
 }
-
 .login-title {
   font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
 }
-
 .login-form {
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
 }
-
 .login-input {
   background: var(--bg);
   border: 1px solid var(--border2);
@@ -728,23 +672,19 @@ button {
   transition: border-color 0.15s;
   width: 100%;
 }
-
 .login-input:focus {
   border-color: var(--accent);
 }
-
 .login-error {
   color: var(--error);
   font-size: 0.82rem;
 }
-
 .login-btn {
   width: 100%;
   justify-content: center;
   padding: 0.75rem;
   margin-top: 0.3rem;
 }
-
 .login-toggle {
   display: block;
   width: 100%;
@@ -757,21 +697,17 @@ button {
   text-decoration: underline;
   cursor: pointer;
 }
-
 .login-toggle:hover {
   color: var(--text2);
 }
 
-/* ── Password field ── */
 .password-wrap {
   position: relative;
 }
-
 .password-input {
   width: 100%;
   padding-right: 2.8rem;
 }
-
 .password-toggle {
   position: absolute;
   right: 0.75rem;
@@ -785,7 +721,6 @@ button {
   align-items: center;
   transition: color 0.15s;
 }
-
 .password-toggle:hover {
   color: var(--text2);
 }
@@ -805,12 +740,13 @@ button {
   font-weight: 500;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
-
 .btn-download:hover {
   border-color: var(--accent);
   color: var(--accent2);
   background: var(--accent-bg);
 }
+
+/* ── Tooltip ── */
 .word-tooltip {
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -824,19 +760,17 @@ button {
   pointer-events: none;
   max-width: 200px;
 }
-
 .tooltip-word {
   font-weight: 600;
   font-size: 0.85rem;
   color: var(--text1);
 }
-
 .tooltip-translation {
   font-size: 0.8rem;
   color: var(--text3);
 }
 
-/* підсвічування слів при озвученні */
+/* ── Word highlighting ── */
 .word {
   cursor: pointer;
   border-radius: 3px;
@@ -853,7 +787,7 @@ button {
   color: var(--text3);
 }
 
-/* речення */
+/* ── Sentence ── */
 .sentence {
   position: relative;
 }
@@ -875,8 +809,6 @@ button {
 .btn-speak-sentence:hover {
   color: var(--text1);
 }
-
-/* переклад речення */
 .sentence-translation {
   display: block;
   font-size: 0.82rem;
@@ -885,35 +817,12 @@ button {
   font-style: italic;
 }
 
-/* tooltip слова */
-.word-tooltip {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  pointer-events: none;
-  max-width: 200px;
-}
-.tooltip-word {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--text1);
-}
-.tooltip-translation {
-  font-size: 0.8rem;
-  color: var(--text3);
-}
+/* ── Trash ── */
 .trash-actions {
   display: flex;
   gap: 0.4rem;
   margin-left: auto;
 }
-
 .btn-restore {
   background: transparent;
   border: 1px solid var(--border);
@@ -929,7 +838,6 @@ button {
   color: #4caf50;
   border-color: #4caf50;
 }
-
 .btn-delete-forever {
   background: transparent;
   border: 1px solid var(--border);
@@ -953,6 +861,8 @@ button {
   border-radius: 10px;
   margin-left: 2px;
 }
+
+/* ── Pending ── */
 .pending-wrap {
   display: flex;
   align-items: center;
@@ -964,6 +874,7 @@ button {
   padding: 2rem;
 }
 
+/* ── Admin ── */
 .users-list {
   display: flex;
   flex-direction: column;
@@ -1006,7 +917,6 @@ button {
   background: var(--bg2);
   color: var(--text3);
 }
-
 .user-actions {
   display: flex;
   gap: 0.5rem;
@@ -1040,13 +950,14 @@ button {
 .btn-secondary:hover {
   color: var(--text1);
 }
+
+/* ── Tabs ── */
 .tabs {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--border);
 }
-
 .tab {
   background: transparent;
   border: none;
@@ -1061,16 +972,15 @@ button {
   margin-bottom: -1px;
   transition: color 0.15s, border-color 0.15s;
 }
-
 .tab-active {
   color: var(--text1);
   border-bottom-color: var(--text1);
 }
-
 .tab:hover {
   color: var(--text1);
 }
 
+/* ── Destination toggle ── */
 .destination-toggle {
   display: flex;
   gap: 0.5rem;
@@ -1080,7 +990,6 @@ button {
   border-radius: 8px;
   width: fit-content;
 }
-
 .dest-btn {
   background: transparent;
   border: none;
@@ -1091,17 +1000,12 @@ button {
   font-size: 0.85rem;
   transition: all 0.15s;
 }
-
 .dest-active {
   background: var(--bg1);
   color: var(--text1);
 }
-.user-greeting {
-  font-size: 0.85rem;
-  color: var(--text3);
-  margin: 0 auto;
-}
 
+/* ── Rate control ── */
 .rate-control {
   display: flex;
   background: var(--bg2);
@@ -1109,7 +1013,6 @@ button {
   padding: 2px;
   gap: 2px;
 }
-
 .rate-btn {
   background: transparent;
   border: none;
@@ -1120,16 +1023,15 @@ button {
   font-size: 0.75rem;
   transition: all 0.15s;
 }
-
 .rate-btn:hover {
   color: var(--text1);
 }
-
 .rate-active {
   background: var(--bg1);
   color: var(--text1);
 }
 
+/* ── Speak chapter button ── */
 .btn-speak-chapter {
   display: flex;
   align-items: center;
@@ -1143,12 +1045,106 @@ button {
   cursor: pointer;
   transition: transform 0.15s, opacity 0.15s;
 }
-
 .btn-speak-chapter:hover {
   transform: scale(1.08);
   opacity: 0.9;
 }
-
 .btn-speak-chapter.speaking {
   background: #4caf50;
+}
+
+/* ── Мобільна адаптація ── */
+@media (max-width: 640px) {
+  .header-inner {
+    padding: 0.6rem 1rem;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .site-logo {
+    font-size: 0.95rem;
+  }
+
+  .user-greeting {
+    order: 3;
+    width: 100%;
+    text-align: center;
+    padding-bottom: 0.3rem;
+    font-size: 0.75rem;
+  }
+
+  .books-main {
+    padding: 1.5rem 1rem;
+    margin: 0;
+  }
+  .book-main {
+    padding: 1.5rem 1rem;
+    margin: 0;
+  }
+  .chapter-main {
+    padding: 1.5rem 1rem 4rem;
+    margin: 0;
+  }
+  .upload-main {
+    padding: 1.5rem 1rem;
+  }
+
+  .book-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+  .book-hero-right {
+    align-items: flex-start;
+  }
+  .book-hero-title {
+    font-size: 1.4rem;
+  }
+
+  .upload-methods {
+    flex-direction: column;
+  }
+  .upload-heading {
+    font-size: 1.4rem;
+  }
+
+  .markdown-body h1 {
+    font-size: 1.4rem;
+  }
+  .markdown-body h2 {
+    font-size: 1.1rem;
+  }
+  .markdown-body pre {
+    font-size: 0.78rem;
+    padding: 0.8rem;
+  }
+
+  .book-desc {
+    display: none;
+  }
+  .drop-zone {
+    padding: 1.5rem 1rem;
+  }
+
+  .btn-back,
+  .btn-primary {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.6rem;
+  }
+
+  .user-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .user-actions {
+    flex-wrap: wrap;
+  }
+
+  .rate-control {
+    display: none;
+  }
+  .word-count {
+    display: none;
+  }
 }
