@@ -1,13 +1,37 @@
-import { For, Show } from 'solid-js';
+import { For, Show, createSignal } from 'solid-js';
 
 export default function BooksPage(props) {
+  const [tab, setTab] = createSignal('shared'); // 'shared' | 'my'
+
+  const currentBooks = () => (tab() === 'shared' ? props.books : props.myBooks);
+
   return (
     <div class="page-wrap">
-      {/* Шапка */}
       <header class="site-header">
         <div class="header-inner">
           <span class="site-logo">bookshelf</span>
+          <span class="user-greeting">Вітаємо, {props.userEmail}</span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Show when={props.isAdmin}>
+              <button class="btn-back" onClick={props.onOpenAdmin}>
+                Адмін
+              </button>
+            </Show>
+            <button class="btn-back" onClick={props.onOpenTrash}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path
+                  d="M2 4h10M5 4V2.5h4V4M5.5 6.5v4M8.5 6.5v4M3 4l.7 7.5h6.6L11 4"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Кошик
+              <Show when={props.trashCount > 0}>
+                <span class="trash-badge">{props.trashCount}</span>
+              </Show>
+            </button>
             <button class="btn-back" onClick={props.onLogout}>
               Вийти
             </button>
@@ -28,8 +52,26 @@ export default function BooksPage(props) {
       </header>
 
       <main class="books-main">
-        {/* Порожня бібліотека */}
-        <Show when={props.books.length === 0}>
+        {/* вкладки */}
+        <div class="tabs">
+          <button
+            class={`tab ${tab() === 'shared' ? 'tab-active' : ''}`}
+            onClick={() => setTab('shared')}
+          >
+            Спільні
+            <span class="count">{props.books.length}</span>
+          </button>
+          <button
+            class={`tab ${tab() === 'my' ? 'tab-active' : ''}`}
+            onClick={() => setTab('my')}
+          >
+            Мої книги
+            <span class="count">{props.myBooks.length}</span>
+          </button>
+        </div>
+
+        {/* порожня бібліотека */}
+        <Show when={currentBooks().length === 0}>
           <div class="empty-state">
             <div class="empty-icon">
               <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
@@ -60,15 +102,10 @@ export default function BooksPage(props) {
           </div>
         </Show>
 
-        {/* Список книг */}
-        <Show when={props.books.length > 0}>
-          <div class="section-title">
-            <span>Бібліотека</span>
-            <span class="count">{props.books.length}</span>
-          </div>
-
+        {/* список книг */}
+        <Show when={currentBooks().length > 0}>
           <div class="books-grid">
-            <For each={props.books}>
+            <For each={currentBooks()}>
               {(book) => (
                 <div class="book-card" onClick={() => props.openBook(book)}>
                   <div class="book-spine" />
@@ -83,11 +120,11 @@ export default function BooksPage(props) {
                   <button
                     class="btn-delete"
                     onClick={(e) => {
-                      e.stopPropagation(); // щоб не відкривалась книга
-                      props.onDeleteBook(book.id);
+                      e.stopPropagation();
+                      props.onDeleteBook(book.id, tab() === 'my');
                     }}
                   >
-                    <svg width="19" height="19" viewBox="0 0 14 14" fill="none">
+                    <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
                       <path
                         d="M2 4h10M5 4V2.5h4V4M5.5 6.5v4M8.5 6.5v4M3 4l.7 7.5h6.6L11 4"
                         stroke="currentColor"

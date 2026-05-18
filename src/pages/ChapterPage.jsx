@@ -9,12 +9,90 @@ import {
   stopSpeaking,
   translateText,
   detectLang,
+  speakFullText,
 } from '../utils/translate.js';
 
 marked.setOptions({ breaks: true });
 
 export default function ChapterPage(props) {
   const [tooltip, setTooltip] = createSignal(null);
+  const [isSpeaking, setIsSpeaking] = createSignal(false); // ← нове
+  const [rate, setRate] = createSignal(0.88);
+
+  function handleSpeakChapter() {
+    if (isSpeaking()) {
+      stopSpeaking();
+      setIsSpeaking(false);
+      // прибираємо підсвічування
+      document.querySelectorAll('.word-active, .word-done').forEach((s) => {
+        s.classList.remove('word-active', 'word-done');
+      });
+      return;
+    }
+
+    const markdownEl = document.querySelector('.markdown-body');
+    if (!markdownEl) return;
+
+    const text = markdownEl.textContent;
+    const lang = detectLang(text);
+    const allWords = Array.from(markdownEl.querySelectorAll('.word'));
+
+    // будуємо charMap для всіх слів
+    const charMap = [];
+    let from = 0;
+    allWords.forEach((span) => {
+      const raw = span.textContent;
+      const pos = text.indexOf(raw, from);
+      if (pos === -1) return;
+      charMap.push({ span, start: pos, end: pos + raw.length });
+      from = pos + raw.length;
+    });
+
+    setIsSpeaking(true);
+
+    speakFullText(text, lang, rate(), (charIndex, charLength) => {
+      if (charIndex === null) {
+        setIsSpeaking(false);
+        setTimeout(() => {
+          allWords.forEach((s) =>
+            s.classList.remove('word-active', 'word-done')
+          );
+        }, 800);
+        return;
+      }
+
+      let best = null,
+        bestDist = Infinity;
+      charMap.forEach((entry) => {
+        if (charIndex >= entry.start && charIndex < entry.end) {
+          best = entry;
+          bestDist = 0;
+        } else {
+          const d = Math.min(
+            Math.abs(charIndex - entry.start),
+            Math.abs(charIndex - entry.end)
+          );
+          if (d < bestDist) {
+            bestDist = d;
+            best = entry;
+          }
+        }
+      });
+
+      if (!best) return;
+      charMap.forEach((entry) => {
+        if (entry === best) {
+          entry.span.classList.remove('word-done');
+          entry.span.classList.add('word-active');
+        } else if (entry.start < best.start) {
+          entry.span.classList.remove('word-active');
+          entry.span.classList.add('word-done');
+        } else {
+          entry.span.classList.remove('word-active', 'word-done');
+        }
+      });
+    });
+  }
 
   onMount(() => {
     hljs.highlightAll();
@@ -29,7 +107,6 @@ export default function ChapterPage(props) {
     onCleanup(() => window.removeEventListener('scroll', onScroll));
 
     queueMicrotask(() => {
-      // copy кнопки на блоках коду
       document.querySelectorAll('pre').forEach((block) => {
         if (block.querySelector('.copy-btn')) return;
         const btn = document.createElement('button');
@@ -44,25 +121,20 @@ export default function ChapterPage(props) {
         block.appendChild(btn);
       });
 
-      // обгортаємо кожне слово у <span class="word">
-      // і кожне речення у <span class="sentence">
       const markdownEl = document.querySelector('.markdown-body');
       if (!markdownEl) return;
 
       markdownEl.querySelectorAll('p, li, h1, h2, h3').forEach((block) => {
-        // збираємо всі дочірні вузли включно з <br>
         const childNodes = Array.from(block.childNodes);
         block.innerHTML = '';
 
         childNodes.forEach((node) => {
           if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'BR') {
-            // <br> залишаємо як є
             block.appendChild(node.cloneNode());
             return;
           }
 
           if (node.nodeType === Node.TEXT_NODE) {
-            // текстовий вузол — розбиваємо на речення і слова
             const text = node.textContent;
             if (!text.trim()) {
               block.appendChild(document.createTextNode(text));
@@ -75,7 +147,6 @@ export default function ChapterPage(props) {
               const sentSpan = document.createElement('span');
               sentSpan.className = 'sentence';
 
-              // розбиваємо на слова
               const parts = sent.split(
                 /([a-zA-Zа-яА-ЯіІїЇєЄёЁãõáéíóúâêôàçüÃÕÁÉÍÓÚÂÊÔÀÇÜ'-]+)/
               );
@@ -95,12 +166,11 @@ export default function ChapterPage(props) {
                 }
               });
 
-              // кнопка озвучення
               const btn = document.createElement('button');
               btn.className = 'btn-speak-sentence';
               btn.title = 'Озвучити речення';
               btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                <path d="M3 5.5h2l3-3v11l-3-3H3v-5zM11 5.5c1 .8 1.5 1.8 1.5 2.5S12 9.7 11 10.5" 
+                <path d="M3 5.5h2l3-3v11l-3-3H3v-5zM11 5.5c1 .8 1.5 1.8 1.5 2.5S12 9.7 11 10.5"
                   stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>`;
               btn.onclick = async (e) => {
@@ -130,7 +200,7 @@ export default function ChapterPage(props) {
             });
             return;
           }
-          // інші елементи (em, strong тощо) — залишаємо як є
+
           block.appendChild(node.cloneNode(true));
         });
       });
@@ -190,9 +260,71 @@ export default function ChapterPage(props) {
               </svg>
               Назад
             </button>
-            <span class="word-count">
-              {countUniqueWords(props.chapter.content)} унікальних слів
-            </span>
+
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.75rem',
+                'align-items': 'center',
+              }}
+            >
+              <span class="word-count">
+                {countUniqueWords(props.chapter.content)}
+              </span>
+
+              {/* ← слайдер швидкості */}
+              <div class="rate-control">
+                <button
+                  class={`rate-btn ${rate() === 0.6 ? 'rate-active' : ''}`}
+                  onClick={() => setRate(0.6)}
+                >
+                  0.6x
+                </button>
+                <button
+                  class={`rate-btn ${rate() === 0.88 ? 'rate-active' : ''}`}
+                  onClick={() => setRate(0.88)}
+                >
+                  1x
+                </button>
+                <button
+                  class={`rate-btn ${rate() === 1.4 ? 'rate-active' : ''}`}
+                  onClick={() => setRate(1.4)}
+                >
+                  1.4x
+                </button>
+              </div>
+
+              <button
+                class={`btn-speak-chapter ${isSpeaking() ? 'speaking' : ''}`}
+                onClick={handleSpeakChapter}
+                title={isSpeaking() ? 'Зупинити' : 'Озвучити главу'}
+              >
+                {isSpeaking() ? (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <rect
+                      x="2"
+                      y="2"
+                      width="4"
+                      height="12"
+                      rx="1.5"
+                      fill="currentColor"
+                    />
+                    <rect
+                      x="10"
+                      y="2"
+                      width="4"
+                      height="12"
+                      rx="1.5"
+                      fill="currentColor"
+                    />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M4 2.5l10 5.5-10 5.5V2.5z" fill="currentColor" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
         </header>
 

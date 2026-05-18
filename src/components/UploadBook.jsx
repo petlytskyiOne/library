@@ -1,9 +1,8 @@
 import { createSignal } from 'solid-js';
 import JSZip from 'jszip';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-// ── Парсер book.md ────────────────────────────────────────────
 function parseBookMeta(content) {
   const get = (key) => {
     const m = content.match(new RegExp(`^${key}:\\s*(.+)`, 'm'));
@@ -17,7 +16,6 @@ function parseBookMeta(content) {
   };
 }
 
-// ── Парсер глави ──────────────────────────────────────────────
 function parseChapter(fileName, content) {
   const titleMatch = content.match(/^#\s+(.+)/m);
   const orderMatch = fileName.match(/^(\d+)/);
@@ -29,11 +27,9 @@ function parseChapter(fileName, content) {
   };
 }
 
-// ── Збірка книги з файлів ─────────────────────────────────────
 function buildBook(files) {
   let meta = { title: 'Без назви', author: '', description: '' };
   const chapters = [];
-
   for (const [name, content] of Object.entries(files)) {
     if (name === 'book.md') {
       meta = parseBookMeta(content);
@@ -41,9 +37,7 @@ function buildBook(files) {
       chapters.push(parseChapter(name, content));
     }
   }
-
   chapters.sort((a, b) => a.order - b.order);
-
   return {
     ...meta,
     slug: meta.title
@@ -54,21 +48,20 @@ function buildBook(files) {
   };
 }
 
-// ── Збереження у Firebase ─────────────────────────────────────
-async function saveToFirebase(book) {
-  return addDoc(collection(db, 'books'), {
-    ...book,
-    uploadedAt: serverTimestamp(),
-  });
+async function saveToFirebase(book, isPersonal) {
+  const user = auth.currentUser;
+  const col = isPersonal
+    ? collection(db, 'users', user.uid, 'books')
+    : collection(db, 'books');
+  return addDoc(col, { ...book, uploadedAt: serverTimestamp() });
 }
 
-// ── Компонент ─────────────────────────────────────────────────
 export default function UploadBook(props) {
   const [status, setStatus] = createSignal('');
-  const [phase, setPhase] = createSignal('idle'); // idle | loading | ok | err
+  const [phase, setPhase] = createSignal('idle');
   const [dragging, setDragging] = createSignal(false);
+  const [destination, setDestination] = createSignal('shared');
 
-  // обробка папки з .md файлами
   async function handleFolder(e) {
     const files = [...e.target.files];
     if (!files.length) return;
@@ -81,7 +74,6 @@ export default function UploadBook(props) {
     await upload(map);
   }
 
-  // обробка ZIP архіву
   async function handleZip(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -97,7 +89,6 @@ export default function UploadBook(props) {
     await upload(map);
   }
 
-  // drag & drop
   function onDragOver(e) {
     e.preventDefault();
     setDragging(true);
@@ -115,21 +106,15 @@ export default function UploadBook(props) {
     handleZip({ target: { files: [file] } });
   }
 
-  // спільна логіка збереження
   async function upload(files) {
     try {
-      if (!Object.keys(files).length) {
+      if (!Object.keys(files).length)
         throw new Error('Не знайдено жодного .md файлу');
-      }
       setStatus('Парсимо структуру...');
       const book = buildBook(files);
-
-      if (!book.chapters.length) {
-        throw new Error('Не знайдено жодної глави');
-      }
+      if (!book.chapters.length) throw new Error('Не знайдено жодної глави');
       setStatus(`Зберігаємо "${book.title}"...`);
-      await saveToFirebase(book);
-
+      await saveToFirebase(book, destination() === 'personal');
       setPhase('ok');
       setStatus(`Завантажено: "${book.title}" (${book.chapters.length} глав)`);
       setTimeout(() => props.onDone?.(), 1800);
@@ -141,7 +126,6 @@ export default function UploadBook(props) {
 
   return (
     <div class="page-wrap">
-      {/* Шапка */}
       <header class="site-header">
         <div class="header-inner">
           <button class="btn-back" onClick={props.onBack}>
@@ -163,7 +147,25 @@ export default function UploadBook(props) {
         <h1 class="upload-heading">Додати книгу</h1>
         <p class="upload-sub">ZIP архів або папка з Markdown файлами</p>
 
-        {/* Drag & Drop зона */}
+        <div class="destination-toggle">
+          <button
+            class={`dest-btn ${
+              destination() === 'shared' ? 'dest-active' : ''
+            }`}
+            onClick={() => setDestination('shared')}
+          >
+            Спільна бібліотека
+          </button>
+          <button
+            class={`dest-btn ${
+              destination() === 'personal' ? 'dest-active' : ''
+            }`}
+            onClick={() => setDestination('personal')}
+          >
+            Мої книги
+          </button>
+        </div>
+
         <div
           class={`drop-zone${dragging() ? ' drag-over' : ''}${
             phase() === 'loading' ? ' is-loading' : ''
@@ -197,7 +199,6 @@ export default function UploadBook(props) {
           <p class="drop-hint">або оберіть спосіб нижче</p>
         </div>
 
-        {/* Кнопки вибору файлу */}
         <div class="upload-methods">
           <label
             class={`method-card${phase() === 'loading' ? ' disabled' : ''}`}
@@ -252,7 +253,6 @@ export default function UploadBook(props) {
           </label>
         </div>
 
-        {/* Статус */}
         {status() && (
           <div class={`upload-status phase-${phase()}`}>
             {phase() === 'loading' && <span class="spinner" />}
@@ -288,7 +288,6 @@ export default function UploadBook(props) {
           </div>
         )}
 
-        {/* Підказка формату */}
         <details class="format-hint">
           <summary>Структура файлів</summary>
           <pre class="format-pre">{`my-book/
@@ -298,7 +297,7 @@ export default function UploadBook(props) {
   description: Опис
 
   01-intro.md      ← глави
-  02-basics.md        (порядок = числовий префікс)
+  02-basics.md
   03-advanced.md`}</pre>
         </details>
       </main>

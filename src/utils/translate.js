@@ -2,11 +2,20 @@
 
 // ── Визначення мови ──────────────────────────────────────────
 export function detectLang(text) {
-  const ptChars = /[ãõáéíóúâêôàçü]/i;
-  const ptWords = /\b(de|da|do|em|um|uma|com|para|que|não|isso|este|esta)\b/i;
-  return ptChars.test(text) || ptWords.test(text) ? 'pt' : 'en';
-}
+  if (!text) return 'en';
 
+  const ptChars = /[ãõáéíóúâêôàçü]/gi;
+  const ptWords =
+    /\b(de|da|do|em|um|uma|com|para|que|não|isso|este|esta|ser|ter|por|como|mais|mas|seu|sua)\b/gi;
+
+  const ptCharMatches = (text.match(ptChars) || []).length;
+  const ptWordMatches = (text.match(ptWords) || []).length;
+  const totalWords = text.split(/\s+/).length;
+
+  const ptScore = (ptCharMatches + ptWordMatches) / totalWords;
+
+  return ptScore > 0.2 ? 'pt' : 'en';
+}
 // ── Озвучення ────────────────────────────────────────────────
 export function speakWord(word, lang) {
   if (!word || !window.speechSynthesis) return;
@@ -109,4 +118,25 @@ export async function translateText(text, sourceLang) {
   } catch {
     return '—';
   }
+}
+
+// src/utils/translate.js — додайте
+
+export function speakFullText(text, lang, rate = 0.88, onWord) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang === 'pt' ? 'pt-PT' : 'en-US';
+  u.rate = rate; // ← використовуємо параметр
+
+  u.onboundary = (e) => {
+    if (e.name !== 'word') return;
+    onWord?.(e.charIndex, e.charLength);
+  };
+
+  u.onend = () => onWord?.(null);
+  u.onerror = () => onWord?.(null);
+
+  window.speechSynthesis.speak(u);
 }

@@ -7,6 +7,14 @@ export function parsePath(pathname) {
     return { type: 'upload' };
   }
 
+  // /trash ← сюди
+  if (type === 'trash') {
+    return { type: 'trash', bookSlug: null, chapterIndex: null };
+  }
+  if (type === 'admin') {
+    return { type: 'admin', bookSlug: null, chapterIndex: null };
+  }
+
   // /book/slug  або  /book/slug/chapter/0
   if (type === 'book') {
     const bookSlug = parts[1];

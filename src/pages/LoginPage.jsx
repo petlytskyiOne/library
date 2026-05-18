@@ -1,11 +1,13 @@
 import { createSignal } from 'solid-js';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function LoginPage() {
+  const [name, setName] = createSignal('');
   const [email, setEmail] = createSignal('');
   const [password, setPassword] = createSignal('');
   const [showPassword, setShowPassword] = createSignal(false);
@@ -19,7 +21,19 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isRegister()) {
-        await createUserWithEmailAndPassword(auth, email(), password());
+        const cred = await createUserWithEmailAndPassword(
+          auth,
+          email(),
+          password()
+        );
+        // створюємо профіль з роллю user і approved: false
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          email: email(),
+          name: name(),
+          role: 'user',
+          approved: false,
+          createdAt: new Date().toISOString(),
+        });
       } else {
         await signInWithEmailAndPassword(auth, email(), password());
       }
@@ -47,6 +61,17 @@ export default function LoginPage() {
         <h1 class="login-title">{isRegister() ? 'Реєстрація' : 'Вхід'}</h1>
 
         <form onSubmit={handleSubmit} class="login-form">
+          {isRegister() && (
+            <input
+              class="login-input"
+              type="text"
+              placeholder="Ваше ім'я"
+              value={name()}
+              onInput={(e) => setName(e.target.value)}
+              required
+            />
+          )}
+
           <input
             class="login-input"
             type="email"
@@ -56,7 +81,6 @@ export default function LoginPage() {
             required
           />
 
-          {/* Поле пароля з кнопкою показати */}
           <div class="password-wrap">
             <input
               class="login-input password-input"
