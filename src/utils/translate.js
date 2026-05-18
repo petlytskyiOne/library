@@ -10,7 +10,8 @@ export function detectLang(text) {
 
   const ptCharMatches = (text.match(ptChars) || []).length;
   const ptWordMatches = (text.match(ptWords) || []).length;
-  const totalWords = text.split(/\s+/).length;
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const totalWords = words.length;
 
   const ptScore = (ptCharMatches + ptWordMatches) / totalWords;
 
@@ -35,10 +36,19 @@ export function speakSentence(text, lang, spans) {
   let from = 0;
   spans.forEach((span) => {
     const raw = span.textContent;
-    const pos = text.indexOf(raw, from);
+    const pos = text.slice(from).indexOf(raw);
+
     if (pos === -1) return;
-    charMap.push({ span, start: pos, end: pos + raw.length });
-    from = pos + raw.length;
+
+    const realPos = from + pos;
+
+    charMap.push({
+      span,
+      start: realPos,
+      end: realPos + raw.length,
+    });
+
+    from = realPos + raw.length;
   });
 
   spans.forEach((s) => s.classList.remove('word-active', 'word-done'));
@@ -49,7 +59,7 @@ export function speakSentence(text, lang, spans) {
 
   u.onboundary = (e) => {
     if (e.name !== 'word') return;
-    const ci = e.charIndex;
+    const ci = e.charIndex ?? 0;
     let best = null,
       bestDist = Infinity;
     charMap.forEach((entry) => {
@@ -114,13 +124,18 @@ export async function translateText(text, sourceLang) {
     )}`;
     const res = await fetch(url);
     const data = await res.json();
-    return data[0].map((d) => d[0]).join('') || '—';
+    if (!Array.isArray(data?.[0])) return '—';
+
+    return (
+      data[0]
+        .map((d) => d?.[0])
+        .filter(Boolean)
+        .join('') || '—'
+    );
   } catch {
     return '—';
   }
 }
-
-// src/utils/translate.js — додайте
 
 export function speakFullText(text, lang, rate = 0.88, onWord) {
   if (!window.speechSynthesis) return;
@@ -132,7 +147,7 @@ export function speakFullText(text, lang, rate = 0.88, onWord) {
 
   u.onboundary = (e) => {
     if (e.name !== 'word') return;
-    onWord?.(e.charIndex, e.charLength);
+    onWord?.(e.charIndex);
   };
 
   u.onend = () => onWord?.(null);
