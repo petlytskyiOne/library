@@ -13,37 +13,30 @@ export function detectLang(text) {
   const words = text.trim().split(/\s+/).filter(Boolean);
   const totalWords = words.length;
 
-  // Захист від ділення на нуль
   if (totalWords === 0) return 'en';
 
   const ptScore = (ptCharMatches + ptWordMatches) / totalWords;
-
   return ptScore > 0.2 ? 'pt' : 'en';
 }
 
-// ── Перевірка підтримки Web Speech API ───────────────────────
+// ── Перевірка підтримки ──────────────────────────────────────
 function isSpeechSupported() {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
 
-// Перевірка підтримки onboundary (відсутня на iOS Safari)
 function isBoundarySupported() {
   if (!isSpeechSupported()) return false;
   const u = new SpeechSynthesisUtterance('');
   return 'onboundary' in u;
 }
 
-// ── Безпечний cancel (iOS не любить cancel без speaking) ─────
+// ── iOS-безпечний speak ──────────────────────────────────────
+// ВАЖЛИВО: на iOS speak() ОБОВ'ЯЗКОВО викликається синхронно
+// в обробнику кліку. Жодних setTimeout/await перед speak() — інакше iOS блокує.
 function safeCancelAndSpeak(utterance) {
   if (!isSpeechSupported()) return;
-
-  if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-    window.speechSynthesis.cancel();
-    // iOS потребує невеликої паузи після cancel перед новим speak
-    setTimeout(() => window.speechSynthesis.speak(utterance), 50);
-  } else {
-    window.speechSynthesis.speak(utterance);
-  }
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
 }
 
 // ── Озвучення слова ──────────────────────────────────────────
@@ -58,29 +51,17 @@ export function speakWord(word, lang) {
 }
 
 // ── Озвучення речення з підсвічуванням слів ──────────────────
-// ФІКС: додано параметр rate (раніше був хардкод 0.88)
-// ФІКС: виправлено race condition у charMap (text.indexOf з позицією замість slice+indexOf)
-// ФІКС: на iOS (без підтримки onboundary) використовується таймерне підсвічування
 export function speakSentence(text, lang, spans, rate = 0.88) {
   if (!isSpeechSupported()) return;
 
-  // Будуємо charMap — тепер через text.indexOf(raw, from) без slice,
-  // щоб уникнути неправильного зсуву при словах-дублікатах
   const charMap = [];
   let from = 0;
 
   spans.forEach((span) => {
     const raw = span.textContent;
-    const pos = text.indexOf(raw, from); // ФІКС: використовуємо from як startIndex
-
+    const pos = text.indexOf(raw, from);
     if (pos === -1) return;
-
-    charMap.push({
-      span,
-      start: pos,
-      end: pos + raw.length,
-    });
-
+    charMap.push({ span, start: pos, end: pos + raw.length });
     from = pos + raw.length;
   });
 
@@ -88,7 +69,7 @@ export function speakSentence(text, lang, spans, rate = 0.88) {
 
   const u = new SpeechSynthesisUtterance(text);
   u.lang = lang === 'pt' ? 'pt-PT' : 'en-US';
-  u.rate = rate; // ФІКС: використовуємо параметр, а не хардкод
+  u.rate = rate;
 
   const highlightByCharIndex = (ci) => {
     if (ci == null) return;
@@ -112,7 +93,6 @@ export function speakSentence(text, lang, spans, rate = 0.88) {
     });
 
     if (!best) return;
-
     charMap.forEach((entry) => {
       if (entry === best) {
         entry.span.classList.remove('word-done');
@@ -137,18 +117,16 @@ export function speakSentence(text, lang, spans, rate = 0.88) {
     );
   };
 
-  // ФІКС: на iOS onboundary не підтримується — робимо таймерне підсвічування
   if (isBoundarySupported()) {
     u.onboundary = (e) => {
       if (e.name !== 'word') return;
       highlightByCharIndex(e.charIndex ?? 0);
     };
   } else {
-    // Таймерне підсвічування: рівномірно розподіляємо слова по часу
-    // Тривалість = довжина тексту / rate / ~14 символів за секунду (приблизно)
+    // Таймерне підсвічування для iOS (без onboundary)
     const estimatedDuration = (text.length / 14) * (1 / rate) * 1000;
     const intervalMs =
-      charMap.length > 0 ? estimatedDuration / charMap.length : 0;
+      charMap.length > 0 ? estimatedDuration / charMap.length : 300;
     let idx = 0;
     const timer = setInterval(() => {
       if (idx >= charMap.length) {
@@ -158,8 +136,6 @@ export function speakSentence(text, lang, spans, rate = 0.88) {
       highlightByCharIndex(charMap[idx].start);
       idx++;
     }, intervalMs);
-
-    // Зберігаємо таймер щоб можна було зупинити
     u._fallbackTimer = timer;
   }
 
@@ -167,7 +143,6 @@ export function speakSentence(text, lang, spans, rate = 0.88) {
     if (u._fallbackTimer) clearInterval(u._fallbackTimer);
     clearHighlights();
   };
-
   u.onerror = () => {
     if (u._fallbackTimer) clearInterval(u._fallbackTimer);
     spans.forEach((s) => s.classList.remove('word-active', 'word-done'));
@@ -176,11 +151,9 @@ export function speakSentence(text, lang, spans, rate = 0.88) {
   safeCancelAndSpeak(u);
 }
 
-// ── Зупинка озвучення ────────────────────────────────────────
-// ФІКС: приймає опціональний container щоб не зачіпати інші елементи на сторінці
+// ── Зупинка ──────────────────────────────────────────────────
 export function stopSpeaking(container = document) {
   if (isSpeechSupported()) window.speechSynthesis.cancel();
-
   container.querySelectorAll('.word-active, .word-done').forEach((s) => {
     s.classList.remove('word-active', 'word-done');
   });
@@ -196,7 +169,6 @@ export async function translateText(text, sourceLang) {
     const res = await fetch(url);
     const data = await res.json();
     if (!Array.isArray(data?.[0])) return '—';
-
     return (
       data[0]
         .map((d) => d?.[0])
@@ -208,11 +180,10 @@ export async function translateText(text, sourceLang) {
   }
 }
 
-// ── Озвучення повного тексту (з колбеком по позиції символу) ─
-// ФІКС: onWord(null) викликається і при відсутній підтримці синтезу
-// ФІКС: safeCancelAndSpeak замість прямого cancel()+speak()
+// ── Озвучення повного тексту ─────────────────────────────────
+// КРИТИЧНО для iOS: speakFullText має викликатись НАПРЯМУ в onClick,
+// без жодного await чи setTimeout між кліком і цим викликом.
 export function speakFullText(text, lang, rate = 0.88, onWord) {
-  // ФІКС: повідомляємо коллера якщо синтез недоступний
   if (!isSpeechSupported()) {
     onWord?.(null);
     return;
@@ -228,8 +199,6 @@ export function speakFullText(text, lang, rate = 0.88, onWord) {
       onWord?.(e.charIndex);
     };
   }
-  // На iOS без boundary — коллер не отримає проміжні позиції,
-  // але onend/onerror спрацюють коректно
 
   u.onend = () => onWord?.(null);
   u.onerror = () => onWord?.(null);

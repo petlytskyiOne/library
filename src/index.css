@@ -1005,52 +1005,81 @@ button {
   color: var(--text1);
 }
 
-/* ── Rate control ── */
+/* ── Перемикач швидкості озвучки ─────────────────────────── */
 .rate-control {
   display: flex;
-  background: var(--bg2);
-  border-radius: 6px;
-  padding: 2px;
+  align-items: center;
   gap: 2px;
+  background: var(--bg2, rgba(255 255 255 / 0.08));
+  border-radius: 8px;
+  padding: 3px;
 }
+
 .rate-btn {
   background: transparent;
   border: none;
-  color: var(--text3);
+  color: var(--text2, rgba(255 255 255 / 0.5));
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 6px;
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  transition: all 0.15s;
-}
-.rate-btn:hover {
-  color: var(--text1);
-}
-.rate-active {
-  background: var(--bg1);
-  color: var(--text1);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  /* Мінімальний розмір для зручного натискання на мобільному */
+  min-height: 32px;
+  min-width: 36px;
 }
 
-/* ── Speak chapter button ── */
+.rate-btn:hover {
+  color: var(--text1, #fff);
+  background: rgba(255 255 255 / 0.1);
+}
+
+.rate-btn.rate-active {
+  background: var(--bg3, rgba(255 255 255 / 0.18));
+  color: var(--text1, #fff);
+}
+
+/* ── Кнопка озвучки глави ────────────────────────────────── */
 .btn-speak-chapter {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--text1);
-  color: var(--bg1);
-  border: none;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
+  border: none;
+  background: var(--text1, #fff);
+  color: var(--bg1, #111);
   cursor: pointer;
-  transition: transform 0.15s, opacity 0.15s;
+  flex-shrink: 0;
+  transition: opacity 0.15s, transform 0.1s;
 }
+
 .btn-speak-chapter:hover {
-  transform: scale(1.08);
-  opacity: 0.9;
+  opacity: 0.85;
 }
+
+.btn-speak-chapter:active {
+  transform: scale(0.93);
+}
+
 .btn-speak-chapter.speaking {
-  background: #4caf50;
+  background: var(--accent, #6c8eff);
+  color: #fff;
+}
+
+/* ── Підсвічування слів під час озвучки ──────────────────── */
+.word-active {
+  background: rgba(108, 142, 255, 0.35);
+  border-radius: 3px;
+  transition: background 0.1s;
+}
+
+.word-done {
+  opacity: 0.45;
+  transition: opacity 0.1s;
 }
 
 /* ── Мобільна адаптація ── */
@@ -1139,10 +1168,6 @@ button {
   }
   .user-actions {
     flex-wrap: wrap;
-  }
-
-  .rate-control {
-    display: none;
   }
   .word-count {
     display: none;
