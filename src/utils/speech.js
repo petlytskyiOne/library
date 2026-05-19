@@ -1,7 +1,4 @@
 // src/utils/speech.js
-// ─────────────────────────────────────────────
-// Unified Speech Utils
-// ─────────────────────────────────────────────
 
 export function isSpeechSupported() {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -20,7 +17,6 @@ function isBoundarySupported() {
 function buildCharMap(text, spans) {
   let from = 0;
   const map = [];
-
   spans.forEach((span) => {
     const raw = span.textContent;
     const pos = text.indexOf(raw, from);
@@ -28,13 +24,11 @@ function buildCharMap(text, spans) {
     map.push({ span, start: pos, end: pos + raw.length });
     from = pos + raw.length;
   });
-
   return map;
 }
 
 function highlightByIndex(map, ci) {
   if (ci == null) return;
-
   let best = null;
   for (const e of map) {
     if (ci >= e.start && ci < e.end) {
@@ -43,7 +37,6 @@ function highlightByIndex(map, ci) {
     }
   }
   if (!best) return;
-
   map.forEach((e) => {
     if (e === best) {
       e.span.classList.remove('word-done');
@@ -66,22 +59,84 @@ function clearHighlights(spans) {
 }
 
 // ─────────────────────────────────────────────
-// iOS/Android warmup
+// Розбивка тексту на chunks
+// Android Chrome обрізає utterance > ~4000 символів
+// ─────────────────────────────────────────────
+const CHUNK_SIZE = 3000;
+
+function splitIntoChunks(text) {
+  if (text.length <= CHUNK_SIZE) {
+    return [{ text, offset: 0 }];
+  }
+
+  const chunks = [];
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  let current = '';
+  let currentOffset = 0;
+  let offset = 0;
+
+  for (const sent of sentences) {
+    if ((current + ' ' + sent).length > CHUNK_SIZE && current) {
+      chunks.push({ text: current.trim(), offset: currentOffset });
+      currentOffset = offset;
+      current = sent;
+    } else {
+      if (!current) currentOffset = offset;
+      current = current ? current + ' ' + sent : sent;
+    }
+    offset += sent.length + 1;
+  }
+
+  if (current.trim()) {
+    chunks.push({ text: current.trim(), offset: currentOffset });
+  }
+
+  return chunks;
+}
+
+// ─────────────────────────────────────────────
+// MediaSession — керування з локскріна Android
 //
-// На мобільних браузерах (iOS Safari, Android Chrome) Web Speech API
-// вимагає що speak() відбувся синхронно в user gesture.
-// SolidJS (і React) синтетичні події іноді розривають цей ланцюжок.
-//
-// Рішення: викликати warmup() ПЕРШИМ РЯДКОМ в onClick компонента,
-// до будь-якої іншої логіки. Це "відкриває" сесію синтезу.
-// Після цього speak() всередині speak() можна викликати асинхронно.
-//
-// Використання в компоненті:
-//   function handlePlay() {
-//     speechWarmup();       // ← перший рядок, синхронно
-//     setIsSpeaking(true);
-//     speak({ ... });       // ← тепер працює на iOS і Android
-//   }
+// Реєструємо додаток як медіаплеєр. Android тоді:
+// 1. Не призупиняє Web Speech API при вимкненому екрані
+// 2. Показує кнопки Play/Pause/Stop на локскрині
+// 3. Дозволяє керувати з шторки сповіщень
+// ─────────────────────────────────────────────
+function setupMediaSession({ title, onPause, onStop }) {
+  if (!('mediaSession' in navigator)) return;
+
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: title || 'Озвучення',
+    artist: 'Reader',
+  });
+
+  navigator.mediaSession.setActionHandler('pause', () => {
+    onPause?.();
+  });
+
+  navigator.mediaSession.setActionHandler('stop', () => {
+    onStop?.();
+  });
+
+  navigator.mediaSession.setActionHandler('play', () => {
+    // play не відновлює — просто ігноруємо,
+    // бо відновлення з середини потребує окремої логіки
+  });
+
+  navigator.mediaSession.playbackState = 'playing';
+}
+
+function clearMediaSession() {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.playbackState = 'none';
+  navigator.mediaSession.setActionHandler('pause', null);
+  navigator.mediaSession.setActionHandler('stop', null);
+  navigator.mediaSession.setActionHandler('play', null);
+}
+
+// ─────────────────────────────────────────────
+// Warmup — розблоковує iOS/Android
+// Викликати ПЕРШИМ рядком в onClick компонента
 // ─────────────────────────────────────────────
 export function speechWarmup() {
   if (!isSpeechSupported()) return;
@@ -93,17 +148,19 @@ export function speechWarmup() {
 }
 
 // ─────────────────────────────────────────────
-// MAIN SPEAK FUNCTION
+// STOP
 // ─────────────────────────────────────────────
-//
-// mode: 'word' | 'sentence' | 'full'
-//
-// 'word'     — просте озвучення одного слова
-// 'sentence' — озвучення речення з підсвічуванням слів (потрібен spans)
-// 'full'     — озвучення великого тексту, колбек onWord(charIndex | null)
-//
-// ВАЖЛИВО: для mode='full' викликати speechWarmup() перед speak() в onClick.
-// Для 'word' і 'sentence' warmup не потрібен — вони вже мають прямий onclick.
+export function stopSpeaking(container = document) {
+  if (!isSpeechSupported()) return;
+  window.speechSynthesis.cancel();
+  clearMediaSession();
+  container.querySelectorAll('.word-active, .word-done').forEach((s) => {
+    s.classList.remove('word-active', 'word-done');
+  });
+}
+
+// ─────────────────────────────────────────────
+// MAIN SPEAK FUNCTION
 // ─────────────────────────────────────────────
 export function speak({
   text,
@@ -112,84 +169,121 @@ export function speak({
   rate = 0.88,
   spans = [],
   onWord,
+  onStop, // колбек коли юзер зупиняє з локскріна
+  isCancelled,
+  chapterTitle, // для MediaSession (назва на локскрині)
 }) {
   if (!isSpeechSupported() || !text) return;
 
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = lang === 'pt' ? 'pt-PT' : 'en-US';
-  u.rate = rate;
+  const uLang = lang === 'pt' ? 'pt-PT' : 'en-US';
 
   // ── MODE: WORD ───────────────────────────────
   if (mode === 'word') {
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-    return;
-  }
-
-  // ── MODE: FULL TEXT ──────────────────────────
-  // Не робимо cancel() тут — warmup вже зроблений в компоненті.
-  // Зайвий cancel() вбив би warmup utterance і заблокував iOS.
-  if (mode === 'full') {
-    if (isBoundarySupported()) {
-      u.onboundary = (e) => {
-        if (e.name === 'word') onWord?.(e.charIndex);
-      };
-    }
-    // На iOS onboundary недоступний — колбек onWord не буде викликатись
-    // для підсвічування, але озвучка працюватиме.
-    u.onend = () => onWord?.(null);
-    u.onerror = () => onWord?.(null);
-
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = uLang;
+    u.rate = rate;
     window.speechSynthesis.speak(u);
     return;
   }
 
   // ── MODE: SENTENCE ───────────────────────────
-  window.speechSynthesis.cancel();
+  if (mode === 'sentence') {
+    window.speechSynthesis.cancel();
+    spans.forEach((s) => s.classList.remove('word-active', 'word-done'));
 
-  spans.forEach((s) => s.classList.remove('word-active', 'word-done'));
+    const charMap = buildCharMap(text, spans);
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = uLang;
+    u.rate = rate;
 
-  const charMap = buildCharMap(text, spans);
+    if (isBoundarySupported()) {
+      u.onboundary = (e) => {
+        if (e.name === 'word') highlightByIndex(charMap, e.charIndex);
+      };
+    } else {
+      const duration = (text.length / 14) * (1 / rate) * 1000;
+      const step = charMap.length ? duration / charMap.length : 300;
+      let i = 0;
+      const timer = setInterval(() => {
+        if (i >= charMap.length) {
+          clearInterval(timer);
+          return;
+        }
+        highlightByIndex(charMap, charMap[i].start);
+        i++;
+      }, step);
+      u._timer = timer;
+    }
 
-  if (isBoundarySupported()) {
-    u.onboundary = (e) => {
-      if (e.name === 'word') highlightByIndex(charMap, e.charIndex);
+    u.onend = () => {
+      if (u._timer) clearInterval(u._timer);
+      clearHighlights(spans);
     };
-  } else {
-    // Таймерне підсвічування для iOS (без onboundary)
-    const duration = (text.length / 14) * (1 / rate) * 1000;
-    const step = charMap.length ? duration / charMap.length : 300;
-    let i = 0;
-    const timer = setInterval(() => {
-      if (i >= charMap.length) {
-        clearInterval(timer);
-        return;
-      }
-      highlightByIndex(charMap, charMap[i].start);
-      i++;
-    }, step);
-    u._timer = timer;
+    u.onerror = () => {
+      if (u._timer) clearInterval(u._timer);
+      spans.forEach((s) => s.classList.remove('word-active', 'word-done'));
+    };
+
+    window.speechSynthesis.speak(u);
+    return;
   }
 
-  u.onend = () => {
-    if (u._timer) clearInterval(u._timer);
-    clearHighlights(spans);
-  };
-  u.onerror = () => {
-    if (u._timer) clearInterval(u._timer);
-    spans.forEach((s) => s.classList.remove('word-active', 'word-done'));
-  };
+  // ── MODE: FULL TEXT ──────────────────────────
+  const chunks = splitIntoChunks(text);
 
-  window.speechSynthesis.speak(u);
-}
-
-// ─────────────────────────────────────────────
-// STOP
-// ─────────────────────────────────────────────
-export function stopSpeaking(container = document) {
-  if (!isSpeechSupported()) return;
-  window.speechSynthesis.cancel();
-  container.querySelectorAll('.word-active, .word-done').forEach((s) => {
-    s.classList.remove('word-active', 'word-done');
+  // Реєструємо MediaSession — Android показує керування на локскрині
+  setupMediaSession({
+    title: chapterTitle,
+    onPause: () => {
+      onStop?.(); // компонент скидає isSpeaking і зупиняє
+    },
+    onStop: () => {
+      onStop?.();
+    },
   });
+
+  function playChunk(idx) {
+    if (isCancelled?.()) {
+      clearMediaSession();
+      return;
+    }
+
+    if (idx >= chunks.length) {
+      onWord?.(null);
+      clearMediaSession();
+      return;
+    }
+
+    const { text: chunkText, offset } = chunks[idx];
+    const u = new SpeechSynthesisUtterance(chunkText);
+    u.lang = uLang;
+    u.rate = rate;
+
+    if (isBoundarySupported()) {
+      u.onboundary = (e) => {
+        if (e.name === 'word') {
+          onWord?.(offset + (e.charIndex ?? 0));
+        }
+      };
+    }
+
+    u.onend = () => {
+      if (isCancelled?.()) {
+        clearMediaSession();
+        return;
+      }
+      playChunk(idx + 1);
+    };
+
+    u.onerror = (e) => {
+      if (e.error === 'interrupted') return;
+      onWord?.(null);
+      clearMediaSession();
+    };
+
+    window.speechSynthesis.speak(u);
+  }
+
+  playChunk(0);
 }

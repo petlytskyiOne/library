@@ -13,10 +13,10 @@ export default function ChapterPage(props) {
   const [isSpeaking, setIsSpeaking] = createSignal(false);
   const [rate, setRate] = createSignal(0.88);
 
-  // Готуємо дані для озвучки всього тексту один раз в onMount
   let fullText = '';
   let fullLang = 'en';
   let charMap = [];
+  let cancelled = false;
 
   function buildFullCharMap() {
     const markdownEl = document.querySelector('.markdown-body');
@@ -38,23 +38,24 @@ export default function ChapterPage(props) {
     });
   }
 
+  function stopAll() {
+    cancelled = true;
+    stopSpeaking();
+    setIsSpeaking(false);
+  }
+
   function handleSpeakChapter() {
     if (isSpeaking()) {
-      stopSpeaking();
-      setIsSpeaking(false);
+      stopAll();
       return;
     }
 
     if (!fullText) return;
 
-    // ── Warmup — ОБОВ'ЯЗКОВО першим рядком ──────────────────
-    // iOS і Android блокують speak() якщо він не синхронний з user gesture.
-    // speechWarmup() робить cancel() + беззвучний speak() прямо тут,
-    // "відкриваючи" сесію синтезу. Після цього speak({ mode:'full' })
-    // ставить текст у чергу без додаткового cancel().
+    // Warmup — ПЕРШИМ рядком, розблоковує iOS/Android
     speechWarmup();
-    // ────────────────────────────────────────────────────────
 
+    cancelled = false;
     setIsSpeaking(true);
 
     speak({
@@ -62,6 +63,14 @@ export default function ChapterPage(props) {
       lang: fullLang,
       mode: 'full',
       rate: rate(),
+      chapterTitle: props.chapter?.title || 'Озвучення',
+      isCancelled: () => cancelled,
+
+      // Викликається коли юзер натискає Pause/Stop на локскрині Android
+      onStop: () => {
+        stopAll();
+      },
+
       onWord: (charIndex) => {
         if (charIndex === null) {
           setIsSpeaking(false);
@@ -73,7 +82,6 @@ export default function ChapterPage(props) {
           return;
         }
 
-        // Підсвічуємо поточне слово
         let best = null;
         let bestDist = Infinity;
 
@@ -111,6 +119,11 @@ export default function ChapterPage(props) {
   }
 
   onMount(() => {
+    // Реєструємо service worker для PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
     hljs.highlightAll();
 
     const saved = localStorage.getItem(`scroll-${props.chapter?.slug}`);
@@ -123,7 +136,6 @@ export default function ChapterPage(props) {
     onCleanup(() => window.removeEventListener('scroll', onScroll));
 
     queueMicrotask(() => {
-      // Copy buttons для code blocks
       document.querySelectorAll('pre').forEach((block) => {
         if (block.querySelector('.copy-btn')) return;
         const btn = document.createElement('button');
@@ -141,7 +153,6 @@ export default function ChapterPage(props) {
       const markdownEl = document.querySelector('.markdown-body');
       if (!markdownEl) return;
 
-      // Розбиваємо текст на речення і слова
       markdownEl.querySelectorAll('p, li, h1, h2, h3').forEach((block) => {
         const childNodes = Array.from(block.childNodes);
         block.innerHTML = '';
@@ -193,7 +204,6 @@ export default function ChapterPage(props) {
                   stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>`;
 
-              // sentence і word озвучка — прямий onclick, warmup не потрібен
               btn.onclick = async (e) => {
                 e.stopPropagation();
                 const text = sentSpan.textContent.trim();
@@ -209,6 +219,7 @@ export default function ChapterPage(props) {
                   existing.remove();
                   return;
                 }
+
                 const div = document.createElement('div');
                 div.className = 'sentence-translation';
                 div.textContent = '...';
@@ -228,11 +239,9 @@ export default function ChapterPage(props) {
         });
       });
 
-      // Будуємо charMap після того як DOM готовий
       buildFullCharMap();
     });
 
-    // Word click — переклад і озвучка окремого слова
     const handleWordClick = async (e) => {
       const wordEl = e.target.closest('.word');
       if (!wordEl) return;
@@ -240,7 +249,6 @@ export default function ChapterPage(props) {
 
       const word = wordEl.textContent.trim();
       const lang = detectLang(word);
-
       speak({ text: word, lang, mode: 'word' });
 
       setTooltip({ word, translation: '...', x: e.clientX, y: e.clientY });
@@ -258,6 +266,7 @@ export default function ChapterPage(props) {
     document.addEventListener('click', closeTooltip);
     onCleanup(() => {
       document.removeEventListener('click', closeTooltip);
+      cancelled = true;
       stopSpeaking();
     });
   });
@@ -300,7 +309,6 @@ export default function ChapterPage(props) {
                 {countUniqueWords(props.chapter.content)}
               </span>
 
-              {/* Перемикач швидкості */}
               <div class="rate-control">
                 <button
                   class={`rate-btn ${rate() === 0.6 ? 'rate-active' : ''}`}
@@ -322,7 +330,6 @@ export default function ChapterPage(props) {
                 </button>
               </div>
 
-              {/* Кнопка Play/Pause */}
               <button
                 class={`btn-speak-chapter ${isSpeaking() ? 'speaking' : ''}`}
                 onClick={handleSpeakChapter}
