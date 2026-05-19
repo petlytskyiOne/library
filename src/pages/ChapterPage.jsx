@@ -65,11 +65,10 @@ export default function ChapterPage(props) {
       rate: rate(),
       chapterTitle: props.chapter?.title || 'Озвучення',
       isCancelled: () => cancelled,
+      // Передаємо charMap щоб таймерний fallback знав які spans підсвічувати
+      fullCharMap: charMap,
 
-      // Викликається коли юзер натискає Pause/Stop на локскрині Android
-      onStop: () => {
-        stopAll();
-      },
+      onStop: () => stopAll(),
 
       onWord: (charIndex) => {
         if (charIndex === null) {
@@ -82,6 +81,7 @@ export default function ChapterPage(props) {
           return;
         }
 
+        // Підсвічуємо слово по абсолютній позиції в тексті
         let best = null;
         let bestDist = Infinity;
 

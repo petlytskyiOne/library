@@ -59,7 +59,7 @@ function clearHighlights(spans) {
 }
 
 // ─────────────────────────────────────────────
-// Розбивка тексту на chunks
+// Розбивка тексту на chunks (~3000 символів)
 // Android Chrome обрізає utterance > ~4000 символів
 // ─────────────────────────────────────────────
 const CHUNK_SIZE = 3000;
@@ -95,12 +95,43 @@ function splitIntoChunks(text) {
 }
 
 // ─────────────────────────────────────────────
-// MediaSession — керування з локскріна Android
+// Таймерний fallback для підсвічування
 //
-// Реєструємо додаток як медіаплеєр. Android тоді:
-// 1. Не призупиняє Web Speech API при вимкненому екрані
-// 2. Показує кнопки Play/Pause/Stop на локскрині
-// 3. Дозволяє керувати з шторки сповіщень
+// На мобільних (iOS Safari, Android Chrome) onboundary не підтримується.
+// Замість нього рівномірно проходимо по словах через setInterval.
+// Повертає функцію stop() щоб зупинити таймер ззовні.
+// ─────────────────────────────────────────────
+function startTimerHighlight({ chunkText, offset, rate, fullCharMap, onWord }) {
+  // Знаходимо слова які належать цьому chunk по offset
+  const chunkEnd = offset + chunkText.length;
+  const chunkWords = fullCharMap.filter(
+    (e) => e.start >= offset && e.start < chunkEnd
+  );
+
+  if (chunkWords.length === 0) return { stop: () => {} };
+
+  // Розраховуємо час на chunk і крок між словами
+  const estimatedMs = (chunkText.length / 14) * (1 / rate) * 1000;
+  const stepMs = estimatedMs / chunkWords.length;
+
+  let i = 0;
+  const timer = setInterval(() => {
+    if (i >= chunkWords.length) {
+      clearInterval(timer);
+      return;
+    }
+    // Передаємо абсолютну позицію в повному тексті
+    onWord?.(chunkWords[i].start);
+    i++;
+  }, stepMs);
+
+  return {
+    stop: () => clearInterval(timer),
+  };
+}
+
+// ─────────────────────────────────────────────
+// MediaSession — керування з локскріна Android
 // ─────────────────────────────────────────────
 function setupMediaSession({ title, onPause, onStop }) {
   if (!('mediaSession' in navigator)) return;
@@ -110,28 +141,18 @@ function setupMediaSession({ title, onPause, onStop }) {
     artist: 'Reader',
   });
 
-  navigator.mediaSession.setActionHandler('pause', () => {
-    onPause?.();
-  });
-
-  navigator.mediaSession.setActionHandler('stop', () => {
-    onStop?.();
-  });
-
-  navigator.mediaSession.setActionHandler('play', () => {
-    // play не відновлює — просто ігноруємо,
-    // бо відновлення з середини потребує окремої логіки
-  });
-
+  navigator.mediaSession.setActionHandler('pause', () => onPause?.());
+  navigator.mediaSession.setActionHandler('stop', () => onStop?.());
+  navigator.mediaSession.setActionHandler('play', () => {});
   navigator.mediaSession.playbackState = 'playing';
 }
 
 function clearMediaSession() {
   if (!('mediaSession' in navigator)) return;
   navigator.mediaSession.playbackState = 'none';
-  navigator.mediaSession.setActionHandler('pause', null);
-  navigator.mediaSession.setActionHandler('stop', null);
-  navigator.mediaSession.setActionHandler('play', null);
+  ['pause', 'stop', 'play'].forEach((a) =>
+    navigator.mediaSession.setActionHandler(a, null)
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -169,13 +190,16 @@ export function speak({
   rate = 0.88,
   spans = [],
   onWord,
-  onStop, // колбек коли юзер зупиняє з локскріна
+  onStop,
   isCancelled,
-  chapterTitle, // для MediaSession (назва на локскрині)
+  chapterTitle,
+  // fullCharMap потрібен для mode:'full' щоб таймер знав які spans підсвічувати
+  fullCharMap = [],
 }) {
   if (!isSpeechSupported() || !text) return;
 
   const uLang = lang === 'pt' ? 'pt-PT' : 'en-US';
+  const boundaryOk = isBoundarySupported();
 
   // ── MODE: WORD ───────────────────────────────
   if (mode === 'word') {
@@ -197,11 +221,12 @@ export function speak({
     u.lang = uLang;
     u.rate = rate;
 
-    if (isBoundarySupported()) {
+    if (boundaryOk) {
       u.onboundary = (e) => {
         if (e.name === 'word') highlightByIndex(charMap, e.charIndex);
       };
     } else {
+      // Таймерний fallback для мобільних
       const duration = (text.length / 14) * (1 / rate) * 1000;
       const step = charMap.length ? duration / charMap.length : 300;
       let i = 0;
@@ -229,19 +254,16 @@ export function speak({
     return;
   }
 
-  // ── MODE: FULL TEXT ──────────────────────────
+  // ── MODE: FULL TEXT (з chunks + таймерний fallback) ──
   const chunks = splitIntoChunks(text);
 
-  // Реєструємо MediaSession — Android показує керування на локскрині
   setupMediaSession({
     title: chapterTitle,
-    onPause: () => {
-      onStop?.(); // компонент скидає isSpeaking і зупиняє
-    },
-    onStop: () => {
-      onStop?.();
-    },
+    onPause: () => onStop?.(),
+    onStop: () => onStop?.(),
   });
+
+  let currentTimer = null;
 
   function playChunk(idx) {
     if (isCancelled?.()) {
@@ -260,15 +282,28 @@ export function speak({
     u.lang = uLang;
     u.rate = rate;
 
-    if (isBoundarySupported()) {
+    if (boundaryOk) {
+      // Desktop / Android з підтримкою boundary
       u.onboundary = (e) => {
         if (e.name === 'word') {
           onWord?.(offset + (e.charIndex ?? 0));
         }
       };
+    } else {
+      // Мобільний fallback — таймерне підсвічування по словах chunk
+      const hl = startTimerHighlight({
+        chunkText,
+        offset,
+        rate,
+        fullCharMap,
+        onWord,
+      });
+      currentTimer = hl;
+      u._timerRef = hl;
     }
 
     u.onend = () => {
+      if (u._timerRef) u._timerRef.stop();
       if (isCancelled?.()) {
         clearMediaSession();
         return;
@@ -277,6 +312,7 @@ export function speak({
     };
 
     u.onerror = (e) => {
+      if (u._timerRef) u._timerRef.stop();
       if (e.error === 'interrupted') return;
       onWord?.(null);
       clearMediaSession();
