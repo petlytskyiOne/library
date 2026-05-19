@@ -31,11 +31,12 @@ function isBoundarySupported() {
 }
 
 // ── iOS-безпечний speak ──────────────────────────────────────
-// ВАЖЛИВО: на iOS speak() ОБОВ'ЯЗКОВО викликається синхронно
-// в обробнику кліку. Жодних setTimeout/await перед speak() — інакше iOS блокує.
-function safeCancelAndSpeak(utterance) {
+// skipCancel = true використовується в speakFullText:
+// cancel() вже зроблений у компоненті перед warmup utterance,
+// повторний cancel() тут вбив би warmup і знову заблокував iOS.
+function safeCancelAndSpeak(utterance, skipCancel = false) {
   if (!isSpeechSupported()) return;
-  window.speechSynthesis.cancel();
+  if (!skipCancel) window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
 
@@ -181,8 +182,8 @@ export async function translateText(text, sourceLang) {
 }
 
 // ── Озвучення повного тексту ─────────────────────────────────
-// КРИТИЧНО для iOS: speakFullText має викликатись НАПРЯМУ в onClick,
-// без жодного await чи setTimeout між кліком і цим викликом.
+// ВАЖЛИВО: викликати speakFullText одразу після warmup у компоненті.
+// skipCancel = true — не скасовуємо warmup, який щойно розблокував iOS.
 export function speakFullText(text, lang, rate = 0.88, onWord) {
   if (!isSpeechSupported()) {
     onWord?.(null);
@@ -203,5 +204,6 @@ export function speakFullText(text, lang, rate = 0.88, onWord) {
   u.onend = () => onWord?.(null);
   u.onerror = () => onWord?.(null);
 
-  safeCancelAndSpeak(u);
+  // skipCancel = true — не вбиваємо warmup utterance
+  safeCancelAndSpeak(u, true);
 }

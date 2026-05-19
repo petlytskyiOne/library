@@ -44,9 +44,6 @@ export default function ChapterPage(props) {
     });
   }
 
-  // КРИТИЧНО для iOS: onClick має бути повністю синхронним.
-  // Всі DOM-операції (querySelector, charMap) вже зроблені в onMount.
-  // В onClick — лише перевірки і speakFullText напряму.
   function handleSpeakChapter() {
     if (isSpeaking()) {
       stopSpeaking();
@@ -55,6 +52,19 @@ export default function ChapterPage(props) {
     }
 
     if (!fullText) return;
+
+    // ── iOS warmup ────────────────────────────────────────────
+    // iOS дозволяє speechSynthesis.speak() лише синхронно в user gesture.
+    // SolidJS синтетичні події іноді розривають цей ланцюжок.
+    // Рішення: запускаємо порожній беззвучний utterance прямо тут —
+    // це "розблоковує" Web Speech API для цієї сесії.
+    // Після цього speakFullText може speak() вже без обмежень.
+    const warmup = new SpeechSynthesisUtterance('');
+    warmup.volume = 0;
+    warmup.rate = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(warmup);
+    // ─────────────────────────────────────────────────────────
 
     setIsSpeaking(true);
 
@@ -190,7 +200,6 @@ export default function ChapterPage(props) {
                 const text = sentSpan.textContent.trim();
                 const lang = detectLang(text);
                 const spans = Array.from(sentSpan.querySelectorAll('.word'));
-                // speakSentence — синхронний виклик одразу в onClick
                 speakSentence(text, lang, spans, rate());
 
                 const existing = sentSpan.querySelector(
