@@ -3,14 +3,8 @@ import { marked } from 'marked';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.css';
 import { countUniqueWords } from '../utils/text.js';
-import {
-  speakWord,
-  speakSentence,
-  stopSpeaking,
-  translateText,
-  detectLang,
-  speakFullText,
-} from '../utils/translate.js';
+import { detectLang, translateText } from '../utils/translate.js';
+import { speak, speechWarmup, stopSpeaking } from '../utils/speech.js';
 
 marked.setOptions({ breaks: true });
 
@@ -19,12 +13,12 @@ export default function ChapterPage(props) {
   const [isSpeaking, setIsSpeaking] = createSignal(false);
   const [rate, setRate] = createSignal(0.88);
 
-  // charMap і текст будуємо один раз в onMount — щоб onClick був синхронним
+  // Готуємо дані для озвучки всього тексту один раз в onMount
   let fullText = '';
   let fullLang = 'en';
   let charMap = [];
 
-  function buildCharMap() {
+  function buildFullCharMap() {
     const markdownEl = document.querySelector('.markdown-body');
     if (!markdownEl) return;
 
@@ -53,64 +47,66 @@ export default function ChapterPage(props) {
 
     if (!fullText) return;
 
-    // ── iOS warmup ────────────────────────────────────────────
-    // iOS дозволяє speechSynthesis.speak() лише синхронно в user gesture.
-    // SolidJS синтетичні події іноді розривають цей ланцюжок.
-    // Рішення: запускаємо порожній беззвучний utterance прямо тут —
-    // це "розблоковує" Web Speech API для цієї сесії.
-    // Після цього speakFullText може speak() вже без обмежень.
-    const warmup = new SpeechSynthesisUtterance('');
-    warmup.volume = 0;
-    warmup.rate = 1;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(warmup);
-    // ─────────────────────────────────────────────────────────
+    // ── Warmup — ОБОВ'ЯЗКОВО першим рядком ──────────────────
+    // iOS і Android блокують speak() якщо він не синхронний з user gesture.
+    // speechWarmup() робить cancel() + беззвучний speak() прямо тут,
+    // "відкриваючи" сесію синтезу. Після цього speak({ mode:'full' })
+    // ставить текст у чергу без додаткового cancel().
+    speechWarmup();
+    // ────────────────────────────────────────────────────────
 
     setIsSpeaking(true);
 
-    speakFullText(fullText, fullLang, rate(), (charIndex) => {
-      if (charIndex === null) {
-        setIsSpeaking(false);
-        setTimeout(() => {
-          charMap.forEach((e) =>
-            e.span.classList.remove('word-active', 'word-done')
-          );
-        }, 800);
-        return;
-      }
+    speak({
+      text: fullText,
+      lang: fullLang,
+      mode: 'full',
+      rate: rate(),
+      onWord: (charIndex) => {
+        if (charIndex === null) {
+          setIsSpeaking(false);
+          setTimeout(() => {
+            charMap.forEach((e) =>
+              e.span.classList.remove('word-active', 'word-done')
+            );
+          }, 800);
+          return;
+        }
 
-      let best = null;
-      let bestDist = Infinity;
+        // Підсвічуємо поточне слово
+        let best = null;
+        let bestDist = Infinity;
 
-      charMap.forEach((entry) => {
-        if (charIndex >= entry.start && charIndex < entry.end) {
-          best = entry;
-          bestDist = 0;
-        } else {
-          const d = Math.min(
-            Math.abs(charIndex - entry.start),
-            Math.abs(charIndex - entry.end)
-          );
-          if (d < bestDist) {
-            bestDist = d;
+        charMap.forEach((entry) => {
+          if (charIndex >= entry.start && charIndex < entry.end) {
             best = entry;
+            bestDist = 0;
+          } else {
+            const d = Math.min(
+              Math.abs(charIndex - entry.start),
+              Math.abs(charIndex - entry.end)
+            );
+            if (d < bestDist) {
+              bestDist = d;
+              best = entry;
+            }
           }
-        }
-      });
+        });
 
-      if (!best) return;
+        if (!best) return;
 
-      charMap.forEach((entry) => {
-        if (entry === best) {
-          entry.span.classList.remove('word-done');
-          entry.span.classList.add('word-active');
-        } else if (entry.start < best.start) {
-          entry.span.classList.remove('word-active');
-          entry.span.classList.add('word-done');
-        } else {
-          entry.span.classList.remove('word-active', 'word-done');
-        }
-      });
+        charMap.forEach((entry) => {
+          if (entry === best) {
+            entry.span.classList.remove('word-done');
+            entry.span.classList.add('word-active');
+          } else if (entry.start < best.start) {
+            entry.span.classList.remove('word-active');
+            entry.span.classList.add('word-done');
+          } else {
+            entry.span.classList.remove('word-active', 'word-done');
+          }
+        });
+      },
     });
   }
 
@@ -166,6 +162,7 @@ export default function ChapterPage(props) {
             const sentences = text.split(/(?<=[.!?])\s+/);
             sentences.forEach((sent) => {
               if (!sent.trim()) return;
+
               const sentSpan = document.createElement('span');
               sentSpan.className = 'sentence';
 
@@ -195,12 +192,15 @@ export default function ChapterPage(props) {
                 <path d="M3 5.5h2l3-3v11l-3-3H3v-5zM11 5.5c1 .8 1.5 1.8 1.5 2.5S12 9.7 11 10.5"
                   stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>`;
+
+              // sentence і word озвучка — прямий onclick, warmup не потрібен
               btn.onclick = async (e) => {
                 e.stopPropagation();
                 const text = sentSpan.textContent.trim();
                 const lang = detectLang(text);
                 const spans = Array.from(sentSpan.querySelectorAll('.word'));
-                speakSentence(text, lang, spans, rate());
+
+                speak({ text, lang, mode: 'sentence', rate: rate(), spans });
 
                 const existing = sentSpan.querySelector(
                   '.sentence-translation'
@@ -216,6 +216,7 @@ export default function ChapterPage(props) {
                 const translation = await translateText(text, lang);
                 div.textContent = translation;
               };
+
               sentSpan.appendChild(btn);
               block.appendChild(sentSpan);
               block.appendChild(document.createTextNode(' '));
@@ -228,9 +229,10 @@ export default function ChapterPage(props) {
       });
 
       // Будуємо charMap після того як DOM готовий
-      buildCharMap();
+      buildFullCharMap();
     });
 
+    // Word click — переклад і озвучка окремого слова
     const handleWordClick = async (e) => {
       const wordEl = e.target.closest('.word');
       if (!wordEl) return;
@@ -238,7 +240,8 @@ export default function ChapterPage(props) {
 
       const word = wordEl.textContent.trim();
       const lang = detectLang(word);
-      speakWord(word, lang);
+
+      speak({ text: word, lang, mode: 'word' });
 
       setTooltip({ word, translation: '...', x: e.clientX, y: e.clientY });
       const translation = await translateText(word, lang);
