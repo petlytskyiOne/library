@@ -11,7 +11,6 @@
 :root {
   --bg: #0a0a0f;
   --bg1: #0d0d14;
-  /* ← додано, використовується в rate-active і btn-speak-chapter */
   --bg2: #111118;
   --bg3: #18181f;
   --border: rgba(255, 255, 255, 0.07);
@@ -21,7 +20,6 @@
   --accent-bg: rgba(124, 106, 255, 0.1);
   --text: #e8e8f0a9;
   --text1: #e8e8f0;
-  /* ← додано, використовується скрізь */
   --text2: #9090a8;
   --text3: #55556a;
   --success: #3ecf8e;
@@ -1005,12 +1003,12 @@ button {
   color: var(--text1);
 }
 
-/* ── Перемикач швидкості озвучки ─────────────────────────── */
+/* ── Перемикач швидкості озвучки ── */
 .rate-control {
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--bg2, rgba(255 255 255 / 0.08));
+  background: var(--bg2);
   border-radius: 8px;
   padding: 3px;
 }
@@ -1018,7 +1016,7 @@ button {
 .rate-btn {
   background: transparent;
   border: none;
-  color: var(--text2, rgba(255 255 255 / 0.5));
+  color: var(--text2);
   font-size: 12px;
   font-weight: 500;
   padding: 4px 8px;
@@ -1026,22 +1024,19 @@ button {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   white-space: nowrap;
-  /* Мінімальний розмір для зручного натискання на мобільному */
   min-height: 32px;
   min-width: 36px;
 }
-
 .rate-btn:hover {
-  color: var(--text1, #fff);
-  background: rgba(255 255 255 / 0.1);
+  color: var(--text1);
+  background: var(--bg3);
 }
-
 .rate-btn.rate-active {
-  background: var(--bg3, rgba(255 255 255 / 0.18));
-  color: var(--text1, #fff);
+  background: var(--bg3);
+  color: var(--text1);
 }
 
-/* ── Кнопка озвучки глави ────────────────────────────────── */
+/* ── Кнопка озвучки глави ── */
 .btn-speak-chapter {
   display: flex;
   align-items: center;
@@ -1050,36 +1045,21 @@ button {
   height: 36px;
   border-radius: 50%;
   border: none;
-  background: var(--text1, #fff);
-  color: var(--bg1, #111);
+  background: var(--text1);
+  color: var(--bg1);
   cursor: pointer;
   flex-shrink: 0;
   transition: opacity 0.15s, transform 0.1s;
 }
-
 .btn-speak-chapter:hover {
   opacity: 0.85;
 }
-
 .btn-speak-chapter:active {
   transform: scale(0.93);
 }
-
 .btn-speak-chapter.speaking {
-  background: var(--accent, #6c8eff);
+  background: var(--accent);
   color: #fff;
-}
-
-/* ── Підсвічування слів під час озвучки ──────────────────── */
-.word-active {
-  background: rgba(108, 142, 255, 0.35);
-  border-radius: 3px;
-  transition: background 0.1s;
-}
-
-.word-done {
-  opacity: 0.45;
-  transition: opacity 0.1s;
 }
 
 /* ── Мобільна адаптація ── */
@@ -1169,7 +1149,19 @@ button {
   .user-actions {
     flex-wrap: wrap;
   }
+
+  /* rate-control і word-count тепер видимі на мобільному */
+  .rate-control {
+    display: flex;
+  }
   .word-count {
     display: none;
+  }
+
+  /* Зменшуємо кнопки rate щоб влізли в хедер */
+  .rate-btn {
+    font-size: 11px;
+    padding: 4px 6px;
+    min-width: 32px;
   }
 }
