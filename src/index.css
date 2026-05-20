@@ -756,7 +756,8 @@ button {
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   pointer-events: none;
-  max-width: 200px;
+  max-width: min(200px, calc(100vw - 16px));
+  word-break: break-word;
 }
 .tooltip-word {
   font-weight: 600;
@@ -1060,6 +1061,11 @@ button {
 .btn-speak-chapter.speaking {
   background: var(--accent);
   color: #fff;
+}
+.btn-speak-chapter.paused {
+  background: var(--bg3);
+  color: var(--accent2);
+  border: 1.5px solid var(--accent);
 }
 
 /* ── Мобільна адаптація ── */

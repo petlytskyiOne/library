@@ -1,3 +1,113 @@
+## Cloudflare Pages
+
+- майже безлімітний CDN-трафік
+- дуже швидкий
+- GitHub інтеграція
+- підтримка React/Vite/Vue/Astro
+- безкоштовний SSL
+- можна працювати навіть без бекенду
+- є Cloudflare Workers
+
+cons:
+
+- трохи складніший за Netlify
+- SSR налаштовується не так просто
+
+## GitHub Pages
+
+Найпростіший варіант для статичних сайтів.
+
+- повністю безкоштовний
+- працює прямо з GitHub
+- ідеально для HTML/CSS/JS
+- можна хостити документацію або SPA
+
+cons:
+
+- немає серверної частини
+- є обмеження по bandwidth
+- для React Router потрібен workaround
+
+Добре підходить якщо хочеш працювати «напряму з GitHub».
+
+## Vercel
+
+Дуже хороший для React і Next.js.
+
+- автоматичний deploy
+- швидкий CDN
+- preview builds
+- дуже зручний UI
+
+cons:
+
+- є ліміти по трафіку
+- для простих сайтів інколи overkill
+
+Особливо хороший якщо у тебе React/Vite або Next.js.
+
+## Render
+
+Добрий варіант якщо потрібен Node.js бекенд.
+
+- можна запускати Express/Node сервер
+- є статичний хостинг
+- GitHub deploy
+
+cons:
+
+- free sleep mode
+- повільніший старт сервера
+
+## Firebase Hosting
+
+Добре для SPA і мобільних/web додатків.
+
+- швидкий CDN
+- HTTPS
+- легко інтегрувати auth/database
+
+cons:
+
+- прив’язка до екосистеми Google
+
+## Surge.sh
+
+Надпростий deploy через команду.
+
+npm install -g surge
+surge
+
+- дуже швидкий deploy
+- простий
+- хороший для тестів
+
+cons:
+
+мало функцій
+
+не для великих проєктів
+
+Для тебе, з урахуванням того що ти робиш React/Vite/Node.js проєкти:
+
+фронтенд → Cloudflare Pages або Vercel
+
+прості HTML/JS → GitHub Pages
+
+Node.js backend → Render або Railway
+
+fullstack → Cloudflare + Supabase/Render
+
+І так — можна повністю обійти Netlify та працювати напряму через GitHub репозиторій:
+
+push у GitHub
+
+Cloudflare/Vercel автоматично робить deploy
+
+Без ручного завантаження файлів.
+
+Також у Cloudflare Pages зараз одна з найкращих безкоштовних моделей по трафіку.
+
 Крок 1 — створення проєкту ← ти тут
 Крок 2 — vite.config.js + jsconfig.json
 Крок 3 — firebase.js

@@ -11,9 +11,38 @@ function isBoundarySupported() {
 }
 
 // ─────────────────────────────────────────────
+// WakeLock
+// ─────────────────────────────────────────────
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    document.addEventListener(
+      'visibilitychange',
+      async () => {
+        if (document.visibilityState === 'visible' && wakeLock === null) {
+          try {
+            wakeLock = await navigator.wakeLock.request('screen');
+          } catch {}
+        }
+      },
+      { once: true }
+    );
+  } catch {}
+}
+
+function releaseWakeLock() {
+  if (wakeLock) {
+    wakeLock.release().catch(() => {});
+    wakeLock = null;
+  }
+}
+
+// ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
-
 function buildCharMap(text, spans) {
   let from = 0;
   const map = [];
@@ -59,15 +88,12 @@ function clearHighlights(spans) {
 }
 
 // ─────────────────────────────────────────────
-// Розбивка тексту на chunks (~3000 символів)
-// Android Chrome обрізає utterance > ~4000 символів
+// Chunks — розбиття по ~3000 символів
 // ─────────────────────────────────────────────
 const CHUNK_SIZE = 3000;
 
 function splitIntoChunks(text) {
-  if (text.length <= CHUNK_SIZE) {
-    return [{ text, offset: 0 }];
-  }
+  if (text.length <= CHUNK_SIZE) return [{ text, offset: 0 }];
 
   const chunks = [];
   const sentences = text.split(/(?<=[.!?])\s+/);
@@ -86,61 +112,52 @@ function splitIntoChunks(text) {
     }
     offset += sent.length + 1;
   }
-
-  if (current.trim()) {
+  if (current.trim())
     chunks.push({ text: current.trim(), offset: currentOffset });
-  }
-
   return chunks;
 }
 
 // ─────────────────────────────────────────────
-// Таймерний fallback для підсвічування
-//
-// На мобільних (iOS Safari, Android Chrome) onboundary не підтримується.
-// Замість нього рівномірно проходимо по словах через setInterval.
-// Повертає функцію stop() щоб зупинити таймер ззовні.
+// Timer highlight fallback (мобільні без onboundary)
+// Повертає { stop, getCurrentWordIndex }
 // ─────────────────────────────────────────────
 function startTimerHighlight({ chunkText, offset, rate, fullCharMap, onWord }) {
-  // Знаходимо слова які належать цьому chunk по offset
   const chunkEnd = offset + chunkText.length;
   const chunkWords = fullCharMap.filter(
     (e) => e.start >= offset && e.start < chunkEnd
   );
+  if (chunkWords.length === 0)
+    return { stop: () => {}, getCurrentCharPos: () => offset };
 
-  if (chunkWords.length === 0) return { stop: () => {} };
-
-  // Розраховуємо час на chunk і крок між словами
   const estimatedMs = (chunkText.length / 14) * (1 / rate) * 1000;
   const stepMs = estimatedMs / chunkWords.length;
-
   let i = 0;
+
   const timer = setInterval(() => {
     if (i >= chunkWords.length) {
       clearInterval(timer);
       return;
     }
-    // Передаємо абсолютну позицію в повному тексті
     onWord?.(chunkWords[i].start);
     i++;
   }, stepMs);
 
   return {
     stop: () => clearInterval(timer),
+    // Повертає абсолютну позицію останнього озвученого слова
+    getCurrentCharPos: () => (i > 0 ? chunkWords[i - 1].start : offset),
   };
 }
 
 // ─────────────────────────────────────────────
-// MediaSession — керування з локскріна Android
+// MediaSession
 // ─────────────────────────────────────────────
 function setupMediaSession({ title, onPause, onStop }) {
   if (!('mediaSession' in navigator)) return;
-
   navigator.mediaSession.metadata = new MediaMetadata({
     title: title || 'Озвучення',
     artist: 'Reader',
   });
-
   navigator.mediaSession.setActionHandler('pause', () => onPause?.());
   navigator.mediaSession.setActionHandler('stop', () => onStop?.());
   navigator.mediaSession.setActionHandler('play', () => {});
@@ -156,8 +173,7 @@ function clearMediaSession() {
 }
 
 // ─────────────────────────────────────────────
-// Warmup — розблоковує iOS/Android
-// Викликати ПЕРШИМ рядком в onClick компонента
+// Warmup
 // ─────────────────────────────────────────────
 export function speechWarmup() {
   if (!isSpeechSupported()) return;
@@ -175,13 +191,28 @@ export function stopSpeaking(container = document) {
   if (!isSpeechSupported()) return;
   window.speechSynthesis.cancel();
   clearMediaSession();
+  releaseWakeLock();
   container.querySelectorAll('.word-active, .word-done').forEach((s) => {
     s.classList.remove('word-active', 'word-done');
   });
 }
 
 // ─────────────────────────────────────────────
-// MAIN SPEAK FUNCTION
+// PAUSE — просто cancel, позицію зберігає компонент
+// ─────────────────────────────────────────────
+export function pauseSpeaking() {
+  if (!isSpeechSupported()) return;
+  window.speechSynthesis.cancel();
+  clearMediaSession();
+  releaseWakeLock();
+}
+
+// ─────────────────────────────────────────────
+// MAIN SPEAK
+//
+// startFromCharPos — абсолютна позиція символу з якої відновлюємось.
+// speak() знаходить перший chunk що містить цю позицію і починає з нього,
+// пропускаючи слова до startFromCharPos.
 // ─────────────────────────────────────────────
 export function speak({
   text,
@@ -191,12 +222,13 @@ export function speak({
   spans = [],
   onWord,
   onStop,
+  onPause,
   isCancelled,
   chapterTitle,
-  // fullCharMap потрібен для mode:'full' щоб таймер знав які spans підсвічувати
   fullCharMap = [],
+  startFromCharPos = 0,
 }) {
-  if (!isSpeechSupported() || !text) return;
+  if (!isSpeechSupported() || !text) return null;
 
   const uLang = lang === 'pt' ? 'pt-PT' : 'en-US';
   const boundaryOk = isBoundarySupported();
@@ -208,7 +240,7 @@ export function speak({
     u.lang = uLang;
     u.rate = rate;
     window.speechSynthesis.speak(u);
-    return;
+    return null;
   }
 
   // ── MODE: SENTENCE ───────────────────────────
@@ -226,7 +258,6 @@ export function speak({
         if (e.name === 'word') highlightByIndex(charMap, e.charIndex);
       };
     } else {
-      // Таймерний fallback для мобільних
       const duration = (text.length / 14) * (1 / rate) * 1000;
       const step = charMap.length ? duration / charMap.length : 300;
       let i = 0;
@@ -251,61 +282,102 @@ export function speak({
     };
 
     window.speechSynthesis.speak(u);
-    return;
+    return null;
   }
 
-  // ── MODE: FULL TEXT (з chunks + таймерний fallback) ──
+  // ── MODE: FULL TEXT ──────────────────────────
   const chunks = splitIntoChunks(text);
+
+  // Знаходимо chunk з якого починати
+  let startChunkIdx = 0;
+  if (startFromCharPos > 0) {
+    for (let i = chunks.length - 1; i >= 0; i--) {
+      if (chunks[i].offset <= startFromCharPos) {
+        startChunkIdx = i;
+        break;
+      }
+    }
+  }
+
+  // Поточна позиція в символах — оновлюється під час озвучки
+  let currentCharPos = startFromCharPos;
+  let currentTimerRef = null;
+  let paused = false;
+
+  requestWakeLock();
 
   setupMediaSession({
     title: chapterTitle,
-    onPause: () => onStop?.(),
+    onPause: () => {
+      paused = true;
+      if (currentTimerRef) currentTimerRef.stop();
+      pauseSpeaking();
+      onPause?.(currentCharPos);
+    },
     onStop: () => onStop?.(),
   });
 
-  let currentTimer = null;
-
   function playChunk(idx) {
-    if (isCancelled?.()) {
+    if (paused || isCancelled?.()) {
       clearMediaSession();
+      releaseWakeLock();
       return;
     }
 
     if (idx >= chunks.length) {
       onWord?.(null);
       clearMediaSession();
+      releaseWakeLock();
       return;
     }
 
     const { text: chunkText, offset } = chunks[idx];
-    const u = new SpeechSynthesisUtterance(chunkText);
+
+    // Якщо відновлюємось з середини — обрізаємо chunk з потрібної позиції
+    let speakText = chunkText;
+    let speakOffset = offset;
+
+    if (idx === startChunkIdx && startFromCharPos > offset) {
+      const cutFrom = startFromCharPos - offset;
+      // Обрізаємо по межі слова щоб не різати посередині
+      const wordBoundary = chunkText.indexOf(' ', cutFrom);
+      if (wordBoundary !== -1) {
+        speakText = chunkText.slice(wordBoundary + 1);
+        speakOffset = offset + wordBoundary + 1;
+      }
+    }
+
+    const u = new SpeechSynthesisUtterance(speakText);
     u.lang = uLang;
     u.rate = rate;
 
     if (boundaryOk) {
-      // Desktop / Android з підтримкою boundary
       u.onboundary = (e) => {
         if (e.name === 'word') {
-          onWord?.(offset + (e.charIndex ?? 0));
+          currentCharPos = speakOffset + (e.charIndex ?? 0);
+          onWord?.(currentCharPos);
         }
       };
     } else {
-      // Мобільний fallback — таймерне підсвічування по словах chunk
       const hl = startTimerHighlight({
-        chunkText,
-        offset,
+        chunkText: speakText,
+        offset: speakOffset,
         rate,
         fullCharMap,
-        onWord,
+        onWord: (pos) => {
+          currentCharPos = pos;
+          onWord?.(pos);
+        },
       });
-      currentTimer = hl;
+      currentTimerRef = hl;
       u._timerRef = hl;
     }
 
     u.onend = () => {
       if (u._timerRef) u._timerRef.stop();
-      if (isCancelled?.()) {
+      if (paused || isCancelled?.()) {
         clearMediaSession();
+        releaseWakeLock();
         return;
       }
       playChunk(idx + 1);
@@ -316,10 +388,19 @@ export function speak({
       if (e.error === 'interrupted') return;
       onWord?.(null);
       clearMediaSession();
+      releaseWakeLock();
     };
 
     window.speechSynthesis.speak(u);
   }
 
-  playChunk(0);
+  playChunk(startChunkIdx);
+
+  return {
+    getCurrentCharPos: () => currentCharPos,
+    pause: () => {
+      paused = true;
+      if (currentTimerRef) currentTimerRef.stop();
+    },
+  };
 }

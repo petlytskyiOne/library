@@ -4,13 +4,19 @@ import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.css';
 import { countUniqueWords } from '../utils/text.js';
 import { detectLang, translateText } from '../utils/translate.js';
-import { speak, speechWarmup, stopSpeaking } from '../utils/speech.js';
+import {
+  speak,
+  speechWarmup,
+  stopSpeaking,
+  pauseSpeaking,
+} from '../utils/speech.js';
 
 marked.setOptions({ breaks: true });
 
 export default function ChapterPage(props) {
   const [tooltip, setTooltip] = createSignal(null);
   const [isSpeaking, setIsSpeaking] = createSignal(false);
+  const [isPaused, setIsPaused] = createSignal(false);
   const [rate, setRate] = createSignal(0.88);
 
   let fullText = '';
@@ -18,61 +24,76 @@ export default function ChapterPage(props) {
   let charMap = [];
   let cancelled = false;
 
+  // Зберігаємо позицію в символах для відновлення
+  let pausedAtCharPos = 0;
+  let speakHandle = null;
+
+  // Подвійний клік
+  let lastTapTime = 0;
+  const DOUBLE_TAP_MS = 400;
+
   function buildFullCharMap() {
     const markdownEl = document.querySelector('.markdown-body');
     if (!markdownEl) return;
 
-    fullText = markdownEl.textContent;
-    fullLang = detectLang(fullText);
-
     const allWords = Array.from(markdownEl.querySelectorAll('.word'));
     charMap = [];
-    let from = 0;
+    let pos = 0;
+    const parts = [];
 
     allWords.forEach((span) => {
       const raw = span.textContent;
-      const pos = fullText.indexOf(raw, from);
-      if (pos === -1) return;
       charMap.push({ span, start: pos, end: pos + raw.length });
-      from = pos + raw.length;
+      parts.push(raw);
+      pos += raw.length + 1;
     });
+
+    fullText = parts.join(' ');
+    fullLang = detectLang(fullText);
   }
 
   function stopAll() {
     cancelled = true;
+    if (speakHandle) {
+      speakHandle.pause();
+      speakHandle = null;
+    }
+    pausedAtCharPos = 0;
     stopSpeaking();
     setIsSpeaking(false);
+    setIsPaused(false);
   }
 
-  function handleSpeakChapter() {
-    if (isSpeaking()) {
-      stopAll();
-      return;
-    }
-
-    if (!fullText) return;
-
-    // Warmup — ПЕРШИМ рядком, розблоковує iOS/Android
-    speechWarmup();
-
+  function startSpeaking(fromCharPos = 0) {
     cancelled = false;
     setIsSpeaking(true);
+    setIsPaused(false);
 
-    speak({
+    speakHandle = speak({
       text: fullText,
       lang: fullLang,
       mode: 'full',
       rate: rate(),
       chapterTitle: props.chapter?.title || 'Озвучення',
       isCancelled: () => cancelled,
-      // Передаємо charMap щоб таймерний fallback знав які spans підсвічувати
       fullCharMap: charMap,
+      startFromCharPos: fromCharPos,
+
+      onPause: (charPos) => {
+        pausedAtCharPos = charPos;
+        speakHandle = null;
+        setIsSpeaking(false);
+        setIsPaused(true);
+      },
 
       onStop: () => stopAll(),
 
       onWord: (charIndex) => {
         if (charIndex === null) {
+          speakHandle = null;
+          pausedAtCharPos = 0;
           setIsSpeaking(false);
+          setIsPaused(false);
           setTimeout(() => {
             charMap.forEach((e) =>
               e.span.classList.remove('word-active', 'word-done')
@@ -81,7 +102,6 @@ export default function ChapterPage(props) {
           return;
         }
 
-        // Підсвічуємо слово по абсолютній позиції в тексті
         let best = null;
         let bestDist = Infinity;
 
@@ -118,8 +138,49 @@ export default function ChapterPage(props) {
     });
   }
 
+  function handleSpeakChapter() {
+    if (!fullText) return;
+
+    const now = Date.now();
+    const isDoubleTap = now - lastTapTime < DOUBLE_TAP_MS;
+    lastTapTime = now;
+
+    // Подвійний клік — завжди з початку
+    if (isDoubleTap) {
+      stopAll();
+      speechWarmup();
+      startSpeaking(0);
+      return;
+    }
+
+    if (isSpeaking()) {
+      // Грає → пауза, зберігаємо поточну позицію
+      const charPos = speakHandle?.getCurrentCharPos() ?? pausedAtCharPos;
+      pausedAtCharPos = charPos;
+      cancelled = true;
+      if (speakHandle) {
+        speakHandle.pause();
+        speakHandle = null;
+      }
+      pauseSpeaking();
+      setIsSpeaking(false);
+      setIsPaused(true);
+      return;
+    }
+
+    if (isPaused()) {
+      // На паузі → продовжуємо з збереженої позиції
+      speechWarmup();
+      startSpeaking(pausedAtCharPos);
+      return;
+    }
+
+    // Не грає → старт з початку
+    speechWarmup();
+    startSpeaking(0);
+  }
+
   onMount(() => {
-    // Реєструємо service worker для PWA
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
@@ -209,7 +270,6 @@ export default function ChapterPage(props) {
                 const text = sentSpan.textContent.trim();
                 const lang = detectLang(text);
                 const spans = Array.from(sentSpan.querySelectorAll('.word'));
-
                 speak({ text, lang, mode: 'sentence', rate: rate(), spans });
 
                 const existing = sentSpan.querySelector(
@@ -251,7 +311,20 @@ export default function ChapterPage(props) {
       const lang = detectLang(word);
       speak({ text: word, lang, mode: 'word' });
 
-      setTooltip({ word, translation: '...', x: e.clientX, y: e.clientY });
+      const TOOLTIP_W = 200;
+      const TOOLTIP_H = 72;
+      const GAP = 12;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      let x = e.clientX;
+      let y = e.clientY + GAP;
+
+      if (x + TOOLTIP_W > vw - 8) x = vw - TOOLTIP_W - 8;
+      if (y + TOOLTIP_H > vh - 8) y = e.clientY - TOOLTIP_H - GAP;
+      if (x < 8) x = 8;
+
+      setTooltip({ word, translation: '...', x, y });
       const translation = await translateText(word, lang);
       setTooltip((t) => t && { ...t, translation });
     };
@@ -270,6 +343,50 @@ export default function ChapterPage(props) {
       stopSpeaking();
     });
   });
+
+  function getButtonIcon() {
+    if (isSpeaking()) {
+      return (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <rect
+            x="2"
+            y="2"
+            width="4"
+            height="12"
+            rx="1.5"
+            fill="currentColor"
+          />
+          <rect
+            x="10"
+            y="2"
+            width="4"
+            height="12"
+            rx="1.5"
+            fill="currentColor"
+          />
+        </svg>
+      );
+    }
+    if (isPaused()) {
+      return (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M4 2.5l10 5.5-10 5.5V2.5z" fill="currentColor" />
+          <rect x="1" y="2" width="2" height="12" rx="1" fill="currentColor" />
+        </svg>
+      );
+    }
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M4 2.5l10 5.5-10 5.5V2.5z" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  function getButtonTitle() {
+    if (isSpeaking()) return 'Пауза (двічі — спочатку)';
+    if (isPaused()) return 'Продовжити (двічі — спочатку)';
+    return 'Озвучити главу';
+  }
 
   return (
     <Show
@@ -331,34 +448,13 @@ export default function ChapterPage(props) {
               </div>
 
               <button
-                class={`btn-speak-chapter ${isSpeaking() ? 'speaking' : ''}`}
+                class={`btn-speak-chapter ${isSpeaking() ? 'speaking' : ''} ${
+                  isPaused() ? 'paused' : ''
+                }`}
                 onClick={handleSpeakChapter}
-                title={isSpeaking() ? 'Зупинити' : 'Озвучити главу'}
+                title={getButtonTitle()}
               >
-                {isSpeaking() ? (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect
-                      x="2"
-                      y="2"
-                      width="4"
-                      height="12"
-                      rx="1.5"
-                      fill="currentColor"
-                    />
-                    <rect
-                      x="10"
-                      y="2"
-                      width="4"
-                      height="12"
-                      rx="1.5"
-                      fill="currentColor"
-                    />
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M4 2.5l10 5.5-10 5.5V2.5z" fill="currentColor" />
-                  </svg>
-                )}
+                {getButtonIcon()}
               </button>
             </div>
           </div>
@@ -377,7 +473,7 @@ export default function ChapterPage(props) {
             style={{
               position: 'fixed',
               left: `${tooltip().x}px`,
-              top: `${tooltip().y + 16}px`,
+              top: `${tooltip().y}px`,
             }}
           >
             <span class="tooltip-word">{tooltip().word}</span>
